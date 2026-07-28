@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kingdom — Reino</title>
+<style>
+  :root{
+    --bg:#1c1a17;--panel:#26231f;--panel2:#2f2b26;--line:#413b33;
+    --ink:#efe7d8;--ink2:#c7bca6;--muted-tx:#9a9080;
+    --accent:#c9a24b;--good:#6fae6a;--bad:#c86b5a;--warn:#d6a24a;--info:#6f9bc4;--radius:12px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5;font-size:15px}
+  h1,h2,h3{font-weight:600;margin:0}
+  .wrap{max-width:1180px;margin:0 auto;padding:18px}
+  header.top{display:flex;flex-wrap:wrap;align-items:center;gap:14px;border:1px solid var(--line);
+    background:var(--panel);border-radius:var(--radius);padding:14px 18px}
+  header.top h1{font-size:20px;letter-spacing:.5px;display:inline}
+  .crest{width:44px;height:44px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:22px;flex-shrink:0}
+  .spacer{flex:1}
+  .season-badge{text-align:right;font-size:13px;color:var(--ink2)}
+  .season-badge b{color:var(--accent);font-size:16px;display:block}
+  .btnicon{font-size:12px;padding:3px 8px;margin-left:8px;vertical-align:middle}
+  .controls{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0;align-items:center}
+  .controls .grp{display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);
+    border-radius:10px;padding:6px 10px;font-size:13px;color:var(--ink2)}
+  select,button,input[type=text]{font:inherit;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+  button{cursor:pointer} button.primary{background:var(--accent);color:#241d0a;border-color:var(--accent);font-weight:600}
+  button.primary:hover{filter:brightness(1.08)} button:disabled{opacity:.45;cursor:not-allowed} button.ghost{background:transparent}
+  .grid{display:grid;grid-template-columns:300px 1fr;gap:16px;margin-top:6px}
+  @media(max-width:820px){.grid{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:16px}
+  .panel h2{font-size:13px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted-tx);margin-bottom:12px}
+  .panel h2 .sub{text-transform:none;letter-spacing:0;font-size:12px;color:#6f675a;font-weight:400}
+  .attr{margin-bottom:11px;cursor:default}
+  .attr .lab{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
+  .attr .lab b{color:var(--ink)} .attr .lab span{color:var(--accent);font-variant-numeric:tabular-nums}
+  .attr .eff{font-size:10.5px;color:#6f675a}
+  .bar{height:7px;background:#00000030;border-radius:4px;overflow:hidden}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,#9c7b2e,var(--accent))}
+  .meters{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .meter{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px}
+  .meter .k{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted-tx)}
+  .meter .v{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px}
+  .meter.tesouro{grid-column:1/-1;background:#332b18;border-color:#5a4a22} .meter.tesouro .v{color:var(--accent)}
+  .meter .v.good{color:var(--good)} .meter .v.bad{color:var(--bad)}
+  .tag{font-size:12px;color:var(--muted-tx)}
+  .clima{font-size:12px;color:var(--ink2);margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)} .clima b{color:var(--ink)}
+  .log{max-height:150px;overflow:auto;font-size:13px;color:var(--ink2);border:1px dashed var(--line);
+    border-radius:8px;padding:10px;margin-bottom:14px;background:#00000020}
+  .log p{margin:0 0 5px} .log .beat{color:var(--accent);font-weight:600}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+  .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+  .card.bonanca{border-top:3px solid var(--good)} .card.cotidiano{border-top:3px solid var(--info)} .card.crise{border-top:3px solid var(--bad)}
+  .card .imgslot{aspect-ratio:16/10;position:relative;background:#000;display:flex;align-items:center;justify-content:center}
+  .card .imgslot img{width:100%;height:100%;object-fit:cover}
+  .card .imgslot .ph{position:absolute;color:#5f584c;font-size:11px;text-align:center;padding:6px}
+  .card .body{padding:12px;display:flex;flex-direction:column;gap:8px;flex:1}
+  .card .deckname{font-size:10px;text-transform:uppercase;letter-spacing:1px}
+  .card.bonanca .deckname{color:var(--good)} .card.cotidiano .deckname{color:var(--info)} .card.crise .deckname{color:var(--bad)}
+  .card h3{font-size:16px} .card .txt{font-size:13px;color:var(--ink2)}
+  .card .fx{font-size:12px;color:var(--muted-tx)} .card .fx b{color:var(--ink2)}
+  .card .onde{font-size:12px;background:#00000030;border-left:3px solid var(--warn);padding:6px 8px;border-radius:0 6px 6px 0;color:var(--ink2)} .card .onde b{color:var(--warn)}
+  .card .kind{font-size:11px;color:var(--muted-tx)}
+  .opts{display:flex;flex-direction:column;gap:6px;margin-top:auto}
+  .opts button{text-align:left;font-size:13px;padding:8px 10px} .opts button:hover{border-color:var(--accent)}
+  .resolved{font-size:12px;color:var(--good);margin-top:auto;padding-top:6px}
+  .shop{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
+  .asset{background:var(--panel2);border:1px solid var(--line);border-radius:10px;overflow:hidden;display:flex;flex-direction:column}
+  .asset .imgslot{aspect-ratio:4/3;background:#000;position:relative;display:flex;align-items:center;justify-content:center}
+  .asset .imgslot img{width:100%;height:100%;object-fit:cover} .asset .imgslot .ph{position:absolute;color:#5f584c;font-size:10px}
+  .asset .ab{padding:9px;display:flex;flex-direction:column;gap:5px}
+  .asset .an{font-size:13px;font-weight:600} .asset .am{font-size:11px;color:var(--muted-tx)}
+  .asset .instr{font-size:10.5px;color:var(--info)} .asset .buy{font-size:12px;padding:5px 8px}
+  .hint{font-size:12px;color:var(--muted-tx);margin-top:8px}
+  .foot{margin-top:16px;font-size:11px;color:#6a6355;text-align:center}
+  .origens{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin-top:12px}
+  .origem{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px;cursor:pointer;transition:border-color .15s}
+  .origem:hover{border-color:var(--muted-tx)} .origem.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+  .origem .oh{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .origem .swatch{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#00000090}
+  .origem .on{font-size:14px;font-weight:600} .origem .od{font-size:12px;color:var(--ink2);margin-bottom:8px}
+  .origem .spread{display:flex;flex-wrap:wrap;gap:4px}
+  .origem .spread span{font-size:10.5px;background:#00000030;border-radius:4px;padding:2px 5px;color:var(--muted-tx)} .origem .spread span b{color:var(--ink2)}
+  .maprow{display:grid;grid-template-columns:1fr 240px;gap:16px}
+  @media(max-width:820px){.maprow{grid-template-columns:1fr}}
+  #hexmap{width:100%;height:auto;background:#151310;border:1px solid var(--line);border-radius:10px}
+  .legend .li{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink2);margin-bottom:5px}
+  .legend .sw{width:18px;height:18px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#00000090;flex-shrink:0}
+  .expbar{font-size:12px;color:var(--ink2);margin:10px 0}
+  .hexinfo{font-size:12.5px;color:var(--ink2);background:#00000025;border:1px solid var(--line);border-radius:8px;padding:10px;min-height:44px}
+  .hexinfo b{color:var(--ink)} .hexinfo .req{color:var(--warn)}
+  .hexinfo button{font-size:12px;padding:5px 9px;margin-top:8px;margin-right:6px}
+  polygon.hex{cursor:pointer;transition:opacity .12s} polygon.hex:hover{opacity:.82}
+  polygon.hex.sel{stroke:#efe7d8;stroke-width:3}
+  text.hexsym{pointer-events:none;font-size:16px;fill:#00000080}
+  text.hexbadge{pointer-events:none;font-size:12px;fill:var(--ink)}
+  .ctab{width:100%;border-collapse:collapse;font-size:12.5px;min-width:560px}
+  .ctab th{text-align:left;color:var(--muted-tx);font-weight:500;padding:4px 6px;font-size:11px}
+  .ctab td{padding:3px 4px;border-top:1px solid var(--line)}
+  .ctab input,.ctab select{width:100%;padding:5px 6px;font-size:12.5px}
+  .exp{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:12px}
+  .exp .eh{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+  .exp .ename{flex:1;font-weight:600;font-size:14px}
+  .exp .erow{font-size:12.5px;color:var(--ink2);margin-bottom:5px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .exp .erow select{padding:3px 6px;font-size:12px}
+  .exp .ebtns{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+  .exp .ebtns button{font-size:12px;padding:4px 8px}
+  .party{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0}
+  .chip{font-size:11px;background:#00000030;border:1px solid var(--line);border-radius:20px;padding:2px 8px;color:var(--ink2)}
+  .elogs{border-top:1px dashed var(--line);margin-top:6px;padding-top:6px}
+  .elog{font-size:11.5px;color:var(--muted-tx);margin-bottom:2px}
+  .charhead{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .charhead .cap{font-size:12.5px;color:var(--ink2)} .charhead .cap b{color:var(--accent)}
+  .charhead button{font-size:12px;padding:5px 9px}
+  .props{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+  .prop{background:var(--panel2);border:1px solid var(--line);border-radius:10px;overflow:hidden;display:flex;flex-direction:column}
+  .prop .pimg{aspect-ratio:4/3;background:#000;position:relative;display:flex;align-items:center;justify-content:center}
+  .prop .pimg img{width:100%;height:100%;object-fit:cover} .prop .pimg .ph{position:absolute;color:#5f584c;font-size:10px}
+  .prop .pb{padding:9px;display:flex;flex-direction:column;gap:5px}
+  .prop .pn{font-size:13px;font-weight:600} .prop .pnv{font-size:11px;color:var(--accent);font-weight:400}
+  .prop .pm{font-size:11px;color:var(--muted-tx)}
+  .loja{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)}
+  .ltitulo{font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+  .lrow{display:flex;align-items:center;gap:6px;font-size:11.5px;margin-bottom:4px;flex-wrap:wrap}
+  .lrow .ln{flex:1;min-width:110px;color:var(--ink2)}
+  .lrow .lp{color:var(--accent);font-variant-numeric:tabular-nums;min-width:22px;text-align:right}
+  .lrow .lp[onclick]{cursor:pointer;text-decoration:underline dotted}
+  .lrow select{font-size:11px;padding:2px 4px}
+  .lrow button{font-size:11px;padding:2px 7px}
+  .maodeobra{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)}
+  .trow{display:flex;align-items:center;gap:5px;margin-bottom:5px;flex-wrap:wrap}
+  .trow .tn,.trow .tf{font-size:11px;padding:3px 5px;width:70px}
+  .trow button{font-size:10.5px;padding:2px 6px}
+  .gml{display:block;font-size:11px;color:var(--muted-tx);margin:8px 0 3px}
+  .gmt{width:100%;min-height:42px;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:6px;font:inherit;font-size:12px;resize:vertical}
+  .inv{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0}
+  .inv .it{font-size:11px;background:#2b3a2b;border:1px solid #3f5a3f;border-radius:6px;padding:2px 7px;color:#cfe0cf}
+  .inv .it button{background:none;border:none;color:#9ab89a;cursor:pointer;padding:0 0 0 4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="crest" id="crest">♜</div>
+    <div><h1 id="reinoNome">Reino</h1>
+      <button class="ghost btnicon" id="btnRename">✎ renomear</button>
+      <button class="ghost btnicon" id="btnNomeDado" title="nome aleatório">🎲</button>
+      <div class="tag" id="escalaLab">Escala: —</div></div>
+    <div class="spacer"></div>
+    <div class="season-badge"><b id="estacaoLab">—</b><span id="anoLab">—</span></div>
+    <button class="ghost btnicon" id="btnHardReset" title="apagar tudo e recomeçar">⟲ resetar tudo</button>
+  </header>
+
+  <!-- FUNDAÇÃO -->
+  <div id="founding" class="panel" style="display:none">
+    <h2>Fundar o reino <span class="sub">— de onde tudo começa</span></h2>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
+      <input type="text" id="nomeInput" placeholder="Nome do reino" style="min-width:220px">
+      <button class="ghost" id="btnNomeReino">🎲 Nome</button>
+      <button class="ghost" id="btnRolar">🎲 Rolar origem</button>
+      <span class="hint" style="margin:0">A origem define os atributos iniciais e o hex-capital.</span>
+    </div>
+    <div class="origens" id="origensList"></div>
+    <div style="margin-top:14px;display:flex;gap:10px;align-items:center">
+      <button class="primary" id="btnFundar" disabled>Fundar o reino ▸</button>
+      <span class="hint" id="fundarHint" style="margin:0">Selecione uma origem.</span>
+    </div>
+  </div>
+
+  <!-- JOGO -->
+  <div id="main" style="display:none">
+    <div class="controls">
+      <div class="grp">Modo <select id="modo"><option value="jogado">Jogado</option><option value="autonomo">Autônomo</option></select></div>
+      <div class="grp">Dificuldade <select id="dificuldade">
+        <option value="tranquilo">Tranquilo</option><option value="equilibrado" selected>Equilibrado</option><option value="duro">Duro</option></select></div>
+      <div class="grp">Dia <b id="diaLab" style="color:var(--accent)">0</b></div>
+      <div class="grp">Estação = <input type="text" id="diasPE" style="width:44px;padding:4px 6px" value="90"> dias</div>
+      <div class="spacer"></div>
+      <button class="primary" id="btnAvancar">Passar 7 dias ▸</button>
+      <button class="ghost" id="btnDia1">+1 dia</button>
+      <button class="ghost" id="btnMestre" title="ver o mapa completo e anotar encontros">👁 Modo Mestre</button>
+      <button class="ghost" id="btnReset" title="Recomeçar do zero">Novo reino</button>
+    </div>
+    <div class="controls" style="margin-top:-6px">
+      <div class="grp">Papel <select id="papelSel"><option value="mestre">Mestre</option><option value="jogador">Jogador (só leitura)</option></select></div>
+      <div class="grp">☁ Sala <input type="text" id="salaInput" placeholder="código do reino" style="width:150px;padding:4px 6px"></div>
+      <button class="ghost" id="btnConectar">Conectar / criar</button>
+      <button class="ghost" id="btnDesconectar">Desconectar</button>
+      <span class="tag" id="syncStatus">nuvem: —</span>
+    </div>
+
+    <div class="grid">
+      <div>
+        <div class="panel"><h2>Medidores <span class="sub">— como o reino está</span></h2>
+          <div class="meters" id="meters"></div><div class="clima" id="clima"></div></div>
+        <div class="panel"><h2>Atributos <span class="sub">— o que o reino é (e faz)</span></h2><div id="attrs"></div></div>
+      </div>
+      <div>
+        <div class="panel"><h2>A estação <span class="sub">— Colhe · Paga · Acontece · Age</span></h2>
+          <div class="log" id="log"></div><div id="stage" class="cards"></div>
+          <div class="hint" id="stageHint">O tempo corre em dias: mova expedições ou use “Passar dias”. Renda e eventos acontecem sozinhos.</div></div>
+        <div class="panel"><h2>Age <span class="sub">— comprar propriedades (atributos destravam, propriedades facilitam expedições)</span></h2><div class="shop" id="shop"></div></div>
+        <div class="panel"><h2>Propriedades do reino <span class="sub">— o que você construiu, com níveis</span></h2><div class="props" id="props"></div></div>
+      </div>
+    </div>
+
+    <div class="panel"><h2>Mapa <span class="sub">— o hexcrawl: onde os eventos se concretizam</span></h2>
+      <div class="maprow">
+        <div><svg id="hexmap" viewBox="0 0 480 420"></svg></div>
+        <div>
+          <div class="expbar" id="expbar"></div>
+          <div class="hexinfo" id="hexinfo">Clique num hex para ver e agir.</div>
+          <div class="legend" id="legend" style="margin-top:12px"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel"><h2>Personagens <span class="sub">— aventureiros disponíveis para expedição</span></h2>
+      <div id="chars"></div></div>
+
+    <div class="panel"><h2>Expedições <span class="sub">— agentes no hexcrawl</span></h2>
+      <div id="exps"></div>
+      <button class="ghost" id="btnAddExp" style="margin-top:10px">+ expedição</button></div>
+  </div>
+  <div class="foot">Kingdom — protótipo jogável v0.4 · sistema agnóstico de reino · salvo no navegador.</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ======================================================================
+   CONFIG SUPABASE — para migrar de projeto, troque SÓ estas três linhas.
+   A Publishable key é pública (segura no navegador com RLS ativo).
+   ====================================================================== */
+const SUPA_URL="https://kgsjicurnunadwivoxnb.supabase.co";
+const SUPA_KEY="sb_publishable_iNSaREevcuph_RCBCWYGXg_vpO-rsKp"; /* Publishable key (pública) */
+const SUPA_TABELA="kingdom_reinos";
+/* ============ DADOS ============ */
+const ATRIBUTOS=[["militar","Militar"],["economia","Economia"],["populacao","População"],["influencia","Influência"]];
+const EFEITO_ATTR={militar:"vs. Ameaça: protege assentamentos seguros — quem resolve é sempre a expedição",
+  economia:"gera a renda por dia",populacao:"aventureiros disponíveis e mão de obra",
+  influencia:"traz novidades do reino maior (começa em 0 — vocês são um posto afastado)"};
+const ESCALAS=["Aldeia","Povoado","Vila","Cidade","Feudo","Condado","Província","Domínio","Reino","Imperium"];
+const ESTACOES=[["primavera","Primavera",0.8],["verao","Verão",1.0],["outono","Outono",0.5],["inverno","Inverno",0.2]];
+const DIFICULDADE={tranquilo:{cartas:1,crisePeso:0.6,recompensa:0.8,label:"Tranquilo"},
+  equilibrado:{cartas:2,crisePeso:1.0,recompensa:1.0,label:"Equilibrado"},duro:{cartas:3,crisePeso:1.6,recompensa:1.5,label:"Duro"}};
+const TERRENOS={
+  campo:{cor:"#6f9a3f",sim:"≋",nome:"Campo"},floresta:{cor:"#2f6d3a",sim:"♣",nome:"Floresta"},
+  montanha:{cor:"#7d7468",sim:"▲",nome:"Montanha"},costa:{cor:"#2f6f92",sim:"≈",nome:"Costa"},
+  pantano:{cor:"#4c7d6b",sim:"≀",nome:"Pântano"},estepe:{cor:"#a98a4e",sim:"∴",nome:"Estepe"},
+  desconhecido:{cor:"#2a2722",sim:"?",nome:"Por explorar"}};
+/* Regras de assentamento por terreno: pode? custo base? exige capacidade? */
+const SETTLE={
+  campo:{pode:true,custo:25},estepe:{pode:true,custo:25},
+  floresta:{pode:true,custo:40},costa:{pode:true,custo:40},
+  pantano:{pode:true,custo:55},
+  montanha:{pode:true,custo:60,requer:"mineracao",requerTxt:"Guilda de Anões na capital"},
+  desconhecido:{pode:false}};
+const ROAD=15;
+const NIVEIS_ASSENT=["Arraial","Vila","Cidade","Grande Cidade","Metrópole"];
+/* Influência começa em 0 para todas as origens: vocês são um posto afastado dentro de um reino maior. */
+const ORIGENS=[
+  {id:"planicie",nome:"Planícies Férteis",terreno:"campo",desc:"Terra farta e aberta. Rica e populosa, mas difícil de defender.",
+    attr:{militar:2,economia:5,influencia:0,populacao:5}},
+  {id:"colinas",nome:"Colinas Minerais",terreno:"montanha",desc:"Encostas defensáveis com veios de minério.",
+    attr:{militar:4,economia:4,influencia:0,populacao:3}},
+  {id:"floresta",nome:"Grande Floresta",terreno:"floresta",desc:"Madeira e caça em abundância, longe de olhos alheios.",
+    attr:{militar:3,economia:3,influencia:0,populacao:3}},
+  {id:"litoral",nome:"Enseada Litorânea",terreno:"costa",desc:"Portos naturais e rotas de comércio abertas ao mundo.",
+    attr:{militar:2,economia:4,influencia:0,populacao:3}},
+  {id:"pantano",nome:"Terras Alagadas",terreno:"pantano",desc:"Brejais isolados, pobres, mas de defesa natural e muito mistério.",
+    attr:{militar:3,economia:2,influencia:0,populacao:2}},
+  {id:"estepe",nome:"Estepe Aberta",terreno:"estepe",desc:"Planaltos de vento e pasto, terra de cavaleiros.",
+    attr:{militar:5,economia:3,influencia:0,populacao:2}}];
+
+/* Cartas: res = 'inst' (efeito imediato) | 'sitio' (planta no mapa) | 'rumor' (revela hex adiante) */
+const BARALHOS={
+  bonanca:[
+    {id:"prosperidade",res:"inst",titulo:"Era de Prosperidade",txt:"As estações sorriem. Celeiros cheios.",
+      efeito:{tesouro:20,moral:1},decisao:{prompt:"O excedente vai para onde?",opcoes:[
+        {label:"Reinvestir (+Economia)",efeito:{economia:1}},{label:"Festa ao povo (+Moral,+Fama)",efeito:{moral:1,fama:1}}]},auto:"aleatorio"},
+    {id:"recurso_valioso",res:"sitio",titulo:"Descoberta de Recurso Valioso",txt:"Batedores falam de veios preciosos além da fronteira.",
+      efeito:{},sitio:{tipo:"recurso",nome:"Veio Precioso",txt:"Minério à espera de quem chegar.",req:null,recomp:{tesouro:30,economia:1}}},
+    {id:"heroi_local",res:"sitio",titulo:"Ascensão de Herói Local",txt:"Um filho da terra parte para um grande feito.",
+      efeito:{fama:1},sitio:{tipo:"local",nome:"Missão do Herói",txt:"Um feito à altura de um herói.",req:{attr:"militar",val:4},recomp:{fama:2,militar:1}}},
+    {id:"rumor_viajantes",res:"rumor",titulo:"Rumores de Viajantes",txt:"Mercadores contam de ruínas ricas terra adentro.",
+      efeito:{},rumorSitio:{tipo:"recurso",nome:"Ruínas Ricas",txt:"Tesouro esquecido entre pedras.",req:null,recomp:{tesouro:25}}}],
+  cotidiano:[
+    {id:"festival",res:"inst",titulo:"Festival da Estação",txt:"O povo pede sua festa. Custa, mas anima.",efeito:{tesouro:-10,moral:1},auto:"padrao"},
+    {id:"magistrado",res:"inst",titulo:"Magistrado de Renome",txt:"Um juiz íntegro aceita servir à corte.",efeito:{ordem:1,influencia:1},auto:"padrao"},
+    {id:"disputa_terras",res:"inst",titulo:"Disputa de Terras",txt:"Dois vassalos reivindicam o mesmo vale.",
+      efeito:{},decisao:{prompt:"Como o reino decide?",opcoes:[
+        {label:"Impor a lei (+Ordem,−Moral)",efeito:{ordem:1,moral:-1}},{label:"Mediar (+Influência)",efeito:{influencia:1}}]},auto:"aleatorio"},
+    {id:"mapas_antigos",res:"rumor",titulo:"Mapas Antigos",txt:"Um cartógrafo vende pergaminhos de terras distantes.",efeito:{},}],
+  crise:[
+    {id:"fome",res:"inst",titulo:"Fome Prolongada",txt:"As reservas minguam antes do fim do inverno.",efeito:{populacao:-1,moral:-1},auto:"padrao"},
+    {id:"desastre",res:"inst",titulo:"Desastre Natural",txt:"Tempestade e cheia arrasam campos e casas.",efeito:{tesouro:-15,moral:-1},auto:"padrao"},
+    {id:"bandidos",res:"sitio",titulo:"Bandidos na Fronteira",txt:"Salteadores fortificam um esconderijo e cortam as rotas.",
+      efeito:{ameaca:1},sitio:{tipo:"ameaca",nome:"Covil de Bandidos",txt:"Salteadores entrincheirados.",req:{attr:"militar",val:4},recomp:{ameaca:-2,tesouro:10}}},
+    {id:"revolta",res:"sitio",titulo:"Revolta Camponesa",txt:"A fúria do interior se junta num foco de rebeldes.",
+      efeito:{moral:-1},sitio:{tipo:"ameaca",nome:"Foco de Revolta",txt:"Rebeldes entrincheirados exigem ser ouvidos.",req:{attr:"influencia",val:4},recomp:{ameaca:-1,ordem:1,moral:1}}}]};
+
+/* Ativos: mods (atributos) + instr (instrumento de expedição) */
+const ATIVOS=[
+  {id:"fazendas",nome:"Fazendas",img:"fazendas.jpg",custo:20,mods:{economia:1,populacao:1}},
+  {id:"taverna",nome:"Taverna",img:"taverna.jpg",custo:20,mods:{fama:1,economia:1},loja:"taverna"},
+  {id:"forte",nome:"Forte",img:"forte.jpg",custo:40,mods:{militar:2,moral:1}},
+  {id:"quartel",nome:"Quartel",img:"quartel.jpg",custo:35,mods:{militar:2},recruta:{sugestao:"soldado / combatente treinado"}},
+  {id:"porto",nome:"Porto",img:"porto.jpg",custo:35,mods:{economia:1},instr:"embarcacao",instrTxt:"libera transporte por embarcação",reqAttr:{economia:4}},
+  {id:"estabulo",nome:"Estábulos",img:"estabulo.jpg",custo:25,mods:{militar:1,populacao:1},instr:"montaria",instrTxt:"libera transporte montado",reqAttr:{populacao:3}},
+  {id:"mina",nome:"Mineração",img:"mina.jpg",custo:30,mods:{economia:2}},
+  {id:"ferreiro",nome:"Ferreiro",img:"ferreiro.jpg",custo:25,mods:{militar:1,economia:1},loja:"ferreiro"},
+  {id:"cabana_cacador",nome:"Cabana do Caçador",img:"cabana_cacador.jpg",custo:22,mods:{militar:1},reqAttr:{populacao:2},recruta:{sugestao:"caçador / atirador"},loja:"cabana_cacador"},
+  {id:"guilda",nome:"Guilda",img:"guilda.jpg",custo:30,mods:{influencia:1,economia:1},instr:"cartografia",instrTxt:"mapas: menos risco de encontro",reqAttr:{economia:3},recruta:{sugestao:"explorador / batedor"}},
+  {id:"guilda_anoes",nome:"Guilda de Anões",img:"anoes.jpg",custo:40,mods:{economia:1,militar:1},cap:"mineracao",capTxt:"permite assentar montanhas",reqAttr:{economia:5},recruta:{sugestao:"minerador / engenheiro"}},
+  {id:"herbalista",nome:"Herbalista",img:"herbalista.jpg",custo:22,mods:{populacao:1},instr:"remedios",instrTxt:"remédios: reduz risco de encontro",reqAttr:{populacao:3},recruta:{sugestao:"curandeiro / herbalista"}},
+  {id:"templo",nome:"Templo",img:"templo.jpg",custo:25,mods:{influencia:1,moral:1},recruta:{sugestao:"monge / místico devoto"}},
+  {id:"biblioteca",nome:"Biblioteca",img:"biblioteca.jpg",custo:28,mods:{influencia:1},reqAttr:{economia:4},recruta:{sugestao:"mago / estudioso arcano"}},
+  {id:"hospital",nome:"Hospital",img:"hospital.jpg",custo:30,mods:{populacao:1,moral:1}}];
+
+/* ===== LOJAS =====
+   Catálogo padrão sugestivo (RPG medieval estilo D&D) para propriedades de serviço.
+   "nivel" = nível mínimo da propriedade para o item aparecer (evoluir a loja destrava mais itens).
+   O mestre pode adaptar: adicionar itens próprios e editar qualquer preço (sugestão, não regra fixa). */
+const LOJAS={
+  taverna:{titulo:"Taverna — provisões e estadia",itens:[
+    {id:"racao",nome:"Ração de viagem (1 semana)",preco:2,nivel:1},
+    {id:"noite_pousada",nome:"Noite na pousada",preco:1,nivel:1},
+    {id:"cerveja",nome:"Barril de cerveja",preco:3,nivel:1},
+    {id:"cordas_lampiao",nome:"Corda e lampião",preco:2,nivel:1},
+    {id:"mapa_regiao",nome:"Mapa da região (rumor de um hex)",preco:8,nivel:2},
+    {id:"contato_local",nome:"Contato local (dica sobre um sítio)",preco:10,nivel:2},
+    {id:"cavalo_alugado",nome:"Cavalo de aluguel (uma jornada)",preco:6,nivel:2},
+    {id:"suite",nome:"Suíte da pousada (descanso pleno)",preco:6,nivel:3},
+    {id:"festim",nome:"Festim privado (facilita recrutar)",preco:15,nivel:3}]},
+  ferreiro:{titulo:"Ferreiro — armas e armaduras",itens:[
+    {id:"adaga",nome:"Adaga",preco:2,nivel:1},
+    {id:"espada_curta",nome:"Espada curta",preco:10,nivel:1},
+    {id:"machado_batalha",nome:"Machado de batalha",preco:10,nivel:1},
+    {id:"armadura_couro",nome:"Armadura de couro",preco:10,nivel:1},
+    {id:"escudo_madeira",nome:"Escudo de madeira",preco:5,nivel:1},
+    {id:"espada_longa",nome:"Espada longa",preco:15,nivel:2},
+    {id:"cota_malha",nome:"Cota de malha",preco:50,nivel:2},
+    {id:"escudo_ferro",nome:"Escudo de ferro",preco:10,nivel:2},
+    {id:"armadura_placas",nome:"Armadura de placas",preco:150,nivel:3},
+    {id:"arma_encomendada",nome:"Arma forjada sob encomenda",preco:200,nivel:3}]},
+  cabana_cacador:{titulo:"Cabana do Caçador — arcos e apetrechos",itens:[
+    {id:"arco_curto",nome:"Arco curto",preco:10,nivel:1},
+    {id:"feixe_flechas",nome:"Feixe de flechas (20)",preco:1,nivel:1},
+    {id:"armadilha_caca",nome:"Armadilha de caça",preco:3,nivel:1},
+    {id:"capa_camuflagem",nome:"Capa de camuflagem",preco:4,nivel:1},
+    {id:"arco_longo",nome:"Arco longo",preco:20,nivel:2},
+    {id:"aljava_reforcada",nome:"Aljava reforçada",preco:5,nivel:2},
+    {id:"besta",nome:"Besta",preco:25,nivel:3},
+    {id:"flechas_especiais",nome:"Flechas especiais (fogo/prata)",preco:15,nivel:3}]}
+};
+/* Itens de uma instância de propriedade: catálogo (até o nível atual) + preços editados + itens extras do mestre. */
+function itensDaLoja(o){
+  const a=ATIVOS.find(x=>x.id===o.id);if(!a||!a.loja)return[];
+  const cat=LOJAS[a.loja];if(!cat)return[];
+  const base=cat.itens.filter(it=>it.nivel<=o.nivel).map(it=>({...it,preco:(o.precos&&o.precos[it.id]!=null)?o.precos[it.id]:it.preco}));
+  return base.concat(o.itensExtra||[]);
+}
+function lojaAddItem(propUid){
+  if(papel!=="mestre"){flashHint("Só o mestre acrescenta itens à loja.");return;}
+  const o=S.ativos.find(x=>x.uid===propUid);if(!o)return;
+  const nome=prompt("Nome do novo item:");if(!nome||!nome.trim())return;
+  const preco=parseInt(prompt("Preço sugerido:","5"))||5;
+  o.itensExtra=o.itensExtra||[];o.itensExtra.push({id:"x"+uid(),nome:nome.trim(),preco,nivel:1,custom:true});
+  salvar();render();
+}
+function lojaEditarPreco(propUid,itemId,precoAtual){
+  if(papel!=="mestre"){flashHint("Só o mestre edita preços.");return;}
+  const o=S.ativos.find(x=>x.uid===propUid);if(!o)return;
+  const novo=parseInt(prompt("Novo preço sugerido:",precoAtual));if(!novo||novo<=0)return;
+  const extra=(o.itensExtra||[]).find(x=>x.id===itemId);
+  if(extra)extra.preco=novo;else{o.precos=o.precos||{};o.precos[itemId]=novo;}
+  salvar();render();
+}
+function lojaRemoverItem(propUid,itemId){
+  if(papel!=="mestre")return;const o=S.ativos.find(x=>x.uid===propUid);if(!o||!o.itensExtra)return;
+  o.itensExtra=o.itensExtra.filter(x=>x.id!==itemId);salvar();render();
+}
+function comprarItemLoja(propUid,itemId,destino){
+  if(bloqueadoLeitura())return;
+  const o=S.ativos.find(x=>x.uid===propUid);if(!o)return;
+  const item=itensDaLoja(o).find(x=>x.id===itemId);if(!item)return;
+  if(destino&&destino.startsWith("exp:")){
+    const e=getExp(destino.slice(4));if(!e){flashHint("Expedição não encontrada.");return;}
+    if(e.bolsa<item.preco){flashHint("Bolsa da expedição insuficiente.");return;}
+    e.bolsa-=item.preco;e.itens=e.itens||[];e.itens.push(item.nome);
+    expLog(e,`Comprou na loja: ${item.nome} (−${item.preco}).`);
+    feedPush(`${e.nome} comprou ${item.nome} (−${item.preco} da bolsa).`);
+  }else if(destino&&destino.startsWith("char:")){
+    const c=S.personagens.find(x=>x.id===destino.slice(5));if(!c){flashHint("Personagem não encontrado.");return;}
+    const saldo=Number(c.recursos)||0;
+    if(saldo<item.preco){flashHint(`${c.nome} não tem recurso suficiente.`);return;}
+    c.recursos=saldo-item.preco;c.itens=c.itens||[];c.itens.push(item.nome);
+    feedPush(`${c.nome} comprou ${item.nome} por conta própria (−${item.preco}).`);
+  }else{
+    if(S.med.tesouro<item.preco){flashHint("Tesouro insuficiente.");return;}
+    S.med.tesouro-=item.preco;
+    feedPush(`Gasto do dia a dia: ${item.nome} (−${item.preco} do Tesouro).`);
+  }
+  salvar();render();
+}
+
+/* ============ ESTADO ============ */
+function estadoInicial(){return{fundado:false,nome:"Reino",origem:null,estacaoIdx:0,ano:1,modo:"jogado",dificuldade:"equilibrado",feed:[],eventos:[],
+  attr:{militar:0,economia:0,influencia:0,populacao:0},
+  med:{tesouro:120,moral:5,fama:1,ameaca:1},ativos:[],pendentes:[],hexes:[],expRest:0,
+  dias:0,diasPorEstacao:90,personagens:[],expedicoes:[]};}
+function uid(){return Math.random().toString(36).slice(2,8);}
+function esc(s){return(s||"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");}
+function getExp(id){return S.expedicoes.find(x=>x.id===id);}
+let S=carregar()||estadoInicial();
+let selOrigem=null,selHex=null,expAtiva=null,modoMestre=false;
+const LIM_ATTR=[0,10],LIM_MED={moral:[0,10],fama:[0,10],ameaca:[0,10]};
+const clamp=(v,[a,b])=>Math.max(a,Math.min(b,v));
+
+/* ============ HEX ============ */
+const HEXSIZE=32,DIRS=[[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
+function hexList(radius){const l=[];for(let q=-radius;q<=radius;q++)for(let r=-radius;r<=radius;r++)if(Math.abs(q+r)<=radius)l.push([q,r]);return l;}
+function axialToPx(q,r){return{x:HEXSIZE*Math.sqrt(3)*(q+r/2),y:HEXSIZE*1.5*r};}
+function getHex(q,r){return S.hexes.find(h=>h.q===q&&h.r===r);}
+function hexDist(a,b){return(Math.abs(a.q-b.q)+Math.abs(a.r-b.r)+Math.abs(a.q+a.r-b.q-b.r))/2;}
+function terrenoAleatorio(){const ks=Object.keys(TERRENOS).filter(k=>k!=="desconhecido");return ks[Math.floor(Math.random()*ks.length)];}
+const MAP_R0=4,MAX_R=9;
+function novoHex(q,r){return {q,r,terreno:terrenoAleatorio(),estado:"oculto",capital:false,constr:[],sitio:null,nota:"",encontro:""};}
+function ensureHex(q,r){if(Math.max(Math.abs(q),Math.abs(r),Math.abs(q+r))>MAX_R)return getHex(q,r);let h=getHex(q,r);if(!h){h=novoHex(q,r);S.hexes.push(h);}return h;}
+function instrumentos(){const s=new Set();S.ativos.forEach(o=>{const a=ATIVOS.find(x=>x.id===o.id);if(a&&a.instr)s.add(a.instr);});return s;}
+function capacidades(){const s=new Set();S.ativos.forEach(o=>{const a=ATIVOS.find(x=>x.id===o.id);if(a&&a.cap)s.add(a.cap);});return s;}
+function vizinhosIncorp(h){return DIRS.map(([dq,dr])=>getHex(h.q+dq,h.r+dr)).filter(n=>n&&n.estado==="incorporado");}
+function podeIncorporar(h){
+  if(!h||h.estado!=="explorado")return{ok:false,motivo:"precisa ser explorado primeiro"};
+  const cfg=SETTLE[h.terreno]||{pode:false};
+  if(!cfg.pode)return{ok:false,motivo:"terreno não permite assentamento"};
+  if(cfg.requer&&!capacidades().has(cfg.requer))return{ok:false,motivo:"requer "+cfg.requerTxt};
+  const adj=vizinhosIncorp(h).length>0;
+  return{ok:true,custo:cfg.custo+(adj?ROAD:0),adj};}
+function conjuntoConectado(){const cap=getHex(0,0),vis=new Set();if(!cap||cap.estado!=="incorporado")return vis;
+  const st=[cap];vis.add("0,0");
+  while(st.length){const h=st.pop();DIRS.forEach(([dq,dr])=>{const n=getHex(h.q+dq,h.r+dr);
+    if(n&&n.estado==="incorporado"&&!vis.has(n.q+","+n.r)){vis.add(n.q+","+n.r);st.push(n);}});}return vis;}
+function hexSeguro(h){return h&&h.estado==="incorporado"&&conjuntoConectado().has(h.q+","+h.r);}
+function baseHexes(){return S.hexes.filter(h=>h.estado==="explorado"||h.estado==="incorporado");}
+/* Movimento (Fase 2): dias por hex = terreno × transporte × ritmo. Exploração NÃO é limitada por atributo. */
+const MOV_TERR={campo:1,estepe:1,floresta:2,costa:2,montanha:3,pantano:3,desconhecido:2};
+const TRANSP_MULT={"a pé":1,"montado":0.6,"embarcação":0.5};
+const RITMO_DIAS={"cauteloso":1.4,"normal":1,"forçado":0.7};
+const RITMO_RISCO={"cauteloso":0.6,"normal":1,"forçado":1.6};
+const RISCO_TERR={campo:0.5,estepe:0.6,costa:0.8,floresta:1.1,montanha:1.2,pantano:1.4,desconhecido:1};
+function transpEfetivo(e,terreno){let m=e.transporte,I=instrumentos();
+  if(m==="montado"&&!I.has("montaria"))m="a pé";
+  if(m==="embarcação"&&!I.has("embarcacao"))m="a pé";
+  if(m==="embarcação")return terreno==="costa"?"embarcação":"a pé";
+  if(m==="montado")return terreno==="costa"?"a pé":"montado";
+  return "a pé";}
+function custoMov(from,to,e){
+  if(from.estado==="incorporado"&&to.estado==="incorporado")return{dias:1,transp:"estrada"};
+  const t=transpEfetivo(e,to.terreno);
+  const d=(MOV_TERR[to.terreno]||2)*TRANSP_MULT[t]*(RITMO_DIAS[e.ritmo]||1);
+  return{dias:Math.max(1,Math.round(d)),transp:t};}
+function riscoMov(to,e){if(hexSeguro(to))return 0;let r=(RISCO_TERR[to.terreno]||1)*(RITMO_RISCO[e.ritmo]||1);const I=instrumentos();if(I.has("cartografia"))r*=0.8;if(I.has("remedios"))r*=0.6;return r;}
+function riscoLabel(r){return r<=0?"nenhum":r<0.8?"baixo":r<1.4?"médio":"alto";}
+function expNoHex(q,r){return S.expedicoes.find(e=>e.q===q&&e.r===r);}
+function reqTexto(req){if(!req)return"alcançar o hex";if(req.attr)return`${labelCurto(req.attr)} ${req.val}+`;if(req.instr)return`instrumento: ${req.instr}`;return"";}
+function reqMet(req){if(!req)return true;if(req.attr)return S.attr[req.attr]>=req.val;if(req.instr)return instrumentos().has(req.instr);return true;}
+
+function fundar(){
+  if(bloqueadoLeitura())return;
+  if(!selOrigem)return;const o=selOrigem;
+  S.attr={...o.attr};S.origem=o.id;
+  S.nome=(document.getElementById("nomeInput").value||"Reino").trim()||"Reino";
+  S.hexes=[];
+  for(let q=-MAP_R0;q<=MAP_R0;q++)for(let r=-MAP_R0;r<=MAP_R0;r++)if(Math.abs(q+r)<=MAP_R0)ensureHex(q,r);
+  const cap=getHex(0,0);cap.terreno=o.terreno;cap.estado="incorporado";cap.capital=true;cap.nivelAssent=2;
+  DIRS.forEach(([dq,dr])=>{const h=getHex(dq,dr);if(h)h.estado="conhecido";});
+  S.fundado=true;S.expRest=1+Math.floor(S.attr.populacao/4);S.dias=0;salvar();render();
+}
+function revelarVizinhos(h){DIRS.forEach(([dq,dr])=>{const n=ensureHex(h.q+dq,h.r+dr);if(n){if(n.estado==="oculto")n.estado="conhecido";DIRS.forEach(([a,b])=>ensureHex(n.q+a,n.r+b));}});}
+function hexOcultoDistante(min,max){const bs=baseHexes();
+  const cand=S.hexes.filter(h=>h.estado==="oculto").map(h=>({h,d:Math.min(...bs.map(b=>hexDist(b,h)))})).filter(x=>x.d>=min&&x.d<=max);
+  if(!cand.length)return null;return cand[Math.floor(Math.random()*cand.length)].h;}
+function hexFronteira(){return S.hexes.filter(h=>h.estado==="conhecido"&&!h.sitio);}
+
+function plantarSitio(carta){
+  let alvo=hexFronteira()[0]?null:null;
+  const fr=hexFronteira();
+  if(fr.length)alvo=fr[Math.floor(Math.random()*fr.length)];
+  else{const o=hexOcultoDistante(1,2);if(o){o.estado="conhecido";alvo=o;}}
+  if(alvo)alvo.sitio={...carta.sitio};
+  return alvo;
+}
+function revelarRumor(carta){
+  const o=hexOcultoDistante(2,3)||hexOcultoDistante(1,3);
+  if(!o)return null;o.estado="conhecido";
+  if(carta.rumorSitio)o.sitio={...carta.rumorSitio};
+  return o;
+}
+
+/* expedições — movimento hex a hex, consumindo dias e a própria bolsa.
+   Cada expedição tem seu próprio relógio (e.dia): pode "jogar" mais ou menos dias que as outras.
+   O relógio do reino (S.dias) é sempre o maior entre todas — só avança (e só então roda renda/eventos)
+   quando alguma expedição ultrapassa a marca atual; quem está atrás simplesmente ainda não chegou lá. */
+function sincronizarRelogio(){
+  const frente=Math.max(S.dias,...S.expedicoes.map(x=>x.dia||0));
+  if(frente>S.dias)avancarDias(frente-S.dias);
+}
+function moverExp(id,q,r){
+  if(bloqueadoLeitura())return;
+  const e=getExp(id);if(!e)return;const from=getHex(e.q,e.r),to=getHex(q,r);
+  if(!to||to.estado==="oculto"){flashHint("Não se viaja ao desconhecido — vá a um hex já conhecido.");return;}
+  if(hexDist(from,to)!==1){flashHint("Mova-se para um hex adjacente.");return;}
+  const mv=custoMov(from,to,e);
+  e.q=q;e.r=r;let novo=false;
+  if(to.estado==="conhecido"){to.estado="explorado";revelarVizinhos(to);novo=true;}
+  const risco=riscoMov(to,e);
+  e.dia=(e.dia==null?S.dias:e.dia)+mv.dias;
+  e.diasUsados=(e.diasUsados||0)+mv.dias;
+  sincronizarRelogio();
+  feedPush(`${e.nome} (dia ${e.dia}): → ${TERRENOS[to.terreno].nome} (${mv.dias}d, ${mv.transp})${novo?", terreno novo":""}${risco>0?" · risco "+riscoLabel(risco).toUpperCase()+" (role na mesa)":""}.`);
+  expLog(e,`${TERRENOS[to.terreno].nome} (${mv.dias}d). Risco: ${riscoLabel(risco)}.`);
+  salvar();selHex=[q,r];render();
+}
+function expResolver(q,r){
+  if(bloqueadoLeitura())return;
+  const h=getHex(q,r);if(!h||!h.sitio)return;
+  // Resolver é sempre agência da expedição (estar presente); atributo é dica, nunca bloqueio.
+  const s=h.sitio;aplicar(s.recomp,DIFICULDADE[S.dificuldade].recompensa);h.sitio=null;
+  feedPush(`Sítio resolvido: ${s.nome}. ${fmtEfeito(s.recomp,true)}`);
+  salvar();selHex=[q,r];render();
+}
+function expIncorporar(q,r){
+  if(bloqueadoLeitura())return;
+  const h=getHex(q,r);if(!h)return;const p=podeIncorporar(h);
+  if(!p.ok){flashHint("Não dá para assentar: "+p.motivo);return;}
+  if(S.med.tesouro<p.custo){flashHint("Tesouro insuficiente ("+p.custo+").");return;}
+  S.med.tesouro-=p.custo;h.estado="incorporado";h.nivelAssent=1;
+  feedPush(`Arraial fundado em ${TERRENOS[h.terreno].nome}${p.adj?" (com estrada até a vizinhança)":" (posto isolado)"}. −${p.custo}. Território agora: ${territorioAtual()}.`);
+  salvar();selHex=[q,r];render();
+}
+function evoluirAssent(q,r){
+  if(bloqueadoLeitura())return;
+  const h=getHex(q,r);if(!h||h.estado!=="incorporado")return;const nv=h.nivelAssent||1;
+  if(nv>=NIVEIS_ASSENT.length){flashHint("Já é o nível máximo.");return;}
+  const custo=40*nv;if(S.med.tesouro<custo){flashHint("Tesouro insuficiente ("+custo+").");return;}
+  S.med.tesouro-=custo;h.nivelAssent=nv+1;aplicar({economia:1,populacao:1});
+  logClear();logBeat("Assentamento",`Evoluiu para ${NIVEIS_ASSENT[nv]} em ${TERRENOS[h.terreno].nome}. +Economia, +População.`);
+  salvar();selHex=[q,r];render();
+}
+
+/* ============ MOTOR ============ */
+function aplicar(efeito,esc=1){if(!efeito)return;
+  for(const [k,vRaw] of Object.entries(efeito)){let v=vRaw;
+    if(k==="tesouro"){if(v>0)v=Math.round(v*esc);S.med.tesouro=Math.max(0,S.med.tesouro+v);continue;}
+    if(k in S.med){S.med[k]=clamp(S.med[k]+v,LIM_MED[k]);continue;}
+    if(k in S.attr)S.attr[k]=clamp(S.attr[k]+v,LIM_ATTR);}}
+function sortearBaralho(){const dif=DIFICULDADE[S.dificuldade];
+  const wBon=1+S.med.moral*0.6+S.attr.influencia*0.4,wCri=(1+S.med.ameaca*0.8)*dif.crisePeso,wCot=2.5;
+  const total=wBon+wCri+wCot;let r=Math.random()*total;
+  if((r-=wBon)<0)return"bonanca";if((r-=wCot)<0)return"cotidiano";return"crise";}
+function comprarCarta(b){const d=BARALHOS[b];return{...d[Math.floor(Math.random()*d.length)],baralho:b};}
+function sitiosAmeaca(){return S.hexes.filter(h=>h.sitio&&h.sitio.tipo==="ameaca").length;}
+/* Militar não resolve nada — só protege. Um sítio de ameaça dentro de território seguro
+   (assentamento conectado por estrada) fica contido enquanto Militar >= Ameaça.
+   Sítios na terra selvagem sempre pressionam: só a agência da expedição os resolve. */
+function pressaoAmeaca(){return S.hexes.filter(h=>h.sitio&&h.sitio.tipo==="ameaca"&&
+  !(hexSeguro(h)&&S.attr.militar>=S.med.ameaca)).length;}
+
+/* ===== LOOP DIÁRIO ===== */
+const EVENTO_CADA=15; // dias entre eventos aleatórios
+const EVENTOS_ESTACAO={
+  primavera:{txt:"degelo abre as estradas; ânimo renovado.",efeito:{moral:1}},
+  verao:{txt:"comércio aquecido nas rotas.",efeito:{tesouro:15}},
+  outono:{txt:"colheita farta antes do frio.",efeito:{tesouro:10}},
+  inverno:{txt:"frio rigoroso pesa sobre o povo.",efeito:{moral:-1}}
+};
+function estacaoAtualIdx(){return Math.floor(S.dias/S.diasPorEstacao)%4;}
+function anoAtual(){return Math.floor(S.dias/(S.diasPorEstacao*4))+1;}
+function dailyIncome(){return S.attr.economia*ESTACOES[estacaoAtualIdx()][2];}
+function feedPush(txt){S.feed=S.feed||[];S.feed.unshift({dia:S.dias,txt});if(S.feed.length>30)S.feed.pop();}
+const CRESCIMENTO_CADA=30; // dias entre tentativas de crescimento populacional
+function avancarDias(n){
+  for(let i=0;i<n;i++){
+    S.dias++;
+    const bruto=dailyIncome(),sust=S.ativos.length*0.3;
+    S.med.tesouro=Math.max(0,S.med.tesouro+bruto-sust);
+    S.ativos.forEach(o=>{(o.trabalhadores||[]).forEach(t=>t.dias++);});
+    if(S.dias%EVENTO_CADA===0){dispararEvento();novidadeInfluencia();}
+    if(S.dias%S.diasPorEstacao===0)eventoDeEstacao();
+    if(S.dias%CRESCIMENTO_CADA===0)tentarCrescimentoPopulacao();
+  }
+}
+/* População cresce sozinha, devagar: nascimentos sempre; migração puxada por Influência e Moral. */
+function tentarCrescimentoPopulacao(){
+  let chance=0.15,motivo="nascimentos na comunidade";
+  if(S.attr.influencia>=3&&S.med.moral>=6){chance+=0.25;motivo="migração atraída pela fama e boa vida do reino";}
+  else if(S.attr.influencia>=1){chance+=0.10;motivo="pequena leva de migrantes";}
+  if(S.med.moral<=2)chance-=0.10;
+  chance=Math.max(0,Math.min(0.9,chance));
+  if(Math.random()<chance){
+    S.attr.populacao=clamp(S.attr.populacao+1,LIM_ATTR);
+    feedPush(`População +1: ${motivo}. (Livre: ${populacaoLivre()})`);
+  }
+}
+function ajustarPopulacaoManual(delta){
+  if(papel!=="mestre"){flashHint("Só o mestre ajusta População manualmente.");return;}
+  S.attr.populacao=clamp(S.attr.populacao+delta,LIM_ATTR);
+  feedPush(`Mestre ajustou População manualmente: ${delta>0?"+":""}${delta}.`);
+  salvar();render();
+}
+function dispararEvento(){
+  const dif=DIFICULDADE[S.dificuldade],c=comprarCarta(sortearBaralho());let extra="";
+  if(c.res==="inst"){aplicar(c.efeito,dif.recompensa);resolverAuto(c);extra=c._auto?" — "+c._auto:"";}
+  else if(c.res==="sitio"){aplicar(c.efeito,dif.recompensa);c._alvo=plantarSitio(c);extra=" — sítio surgiu no mapa";}
+  else if(c.res==="rumor"){c._alvo=revelarRumor(c);extra=" — rumor revelou um hex";}
+  const nomes={bonanca:"Bonança",cotidiano:"Cotidiano",crise:"Crise"};
+  feedPush(`[${nomes[c.baralho]}] ${c.titulo}${extra}`);
+  S.eventos=([c].concat(S.eventos||[])).slice(0,6);
+}
+function eventoDeEstacao(){
+  const est=estacaoAtualIdx();
+  const pressao=pressaoAmeaca();
+  if(pressao>0){aplicar({ameaca:pressao});feedPush(`${pressao} sítio(s) de ameaça fora de proteção pressionam: +${pressao} Ameaça.`);}
+  else if(sitiosAmeaca()>0)feedPush(`Militar ${S.attr.militar} ≥ Ameaça ${S.med.ameaca}: assentamentos seguros seguem protegidos.`);
+  let imTot=0;S.expedicoes.forEach(e=>{const hh=getHex(e.q,e.r);if(hexSeguro(hh)&&e.bolsa>0){const imp=Math.max(1,Math.round(e.bolsa*0.1));e.bolsa-=imp;S.med.tesouro+=imp;imTot+=imp;expLog(e,`Imposto/gastos: −${imp} à capital.`);}});
+  if(imTot>0)feedPush(`Impostos e gastos deixaram +${imTot} de Recurso na capital.`);
+  const se=EVENTOS_ESTACAO[ESTACOES[est][0]];if(se){aplicar(se.efeito,DIFICULDADE[S.dificuldade].recompensa);feedPush(`❄ ${ESTACOES[est][1]}: ${se.txt}`);}
+}
+/* Influência traz novidades: quanto mais conhecidos no reino maior, mais o mundo bate à porta. */
+function novidadeInfluencia(){
+  if(S.attr.influencia<=0)return;
+  if(Math.random()<S.attr.influencia*0.03){
+    aplicar({tesouro:10,fama:1});
+    feedPush(`Novidade do reino maior: com Influência ${S.attr.influencia}, notícias e visitantes chegam à capital (+10 Recurso, +1 Fama).`);
+  }
+}
+function passarDias(n){if(bloqueadoLeitura())return;avancarDias(n);salvar();render();}
+function resolverAuto(c){if(!c.decisao){c._auto="Aplicado.";return;}
+  let idx=c.auto==="aleatorio"?Math.floor(Math.random()*c.decisao.opcoes.length):(c.padrao||0);
+  const op=c.decisao.opcoes[idx];aplicar(op.efeito,DIFICULDADE[S.dificuldade].recompensa);c._auto=op.label;}
+function decidir(id,idx){if(bloqueadoLeitura())return;const c=S.pendentes.find(x=>x.id===id);if(!c)return;
+  const op=c.decisao.opcoes[idx];aplicar(op.efeito,DIFICULDADE[S.dificuldade].recompensa);
+  c._escolhido=op.label;S.pendentes=S.pendentes.filter(x=>x.id!==id);salvar();render();
+  const el=document.querySelector(`[data-card="${id}"] .opts`);if(el)el.outerHTML=`<div class="resolved">✓ ${op.label}</div>`;}
+function comprarAtivo(id){if(bloqueadoLeitura())return;const a=ATIVOS.find(x=>x.id===id);if(!a)return;
+  if(a.reqAttr){for(const [k,v] of Object.entries(a.reqAttr))if(S.attr[k]<v){flashHint(`Requer ${labelCurto(k)} ${v}+ para ${a.nome}.`);return;}}
+  if(S.med.tesouro<a.custo){flashHint("Tesouro insuficiente.");return;}
+  S.med.tesouro-=a.custo;aplicar(a.mods);S.ativos.push({uid:uid(),id:a.id,nivel:1});
+  const cap=getHex(0,0);if(cap)cap.constr.push(a.id);salvar();render();}
+
+/* ============ RENDER ============ */
+/* Território é derivado: quantos hexes o reino assentou de fato — não se compra. */
+function territorioAtual(){return S.hexes.filter(h=>h.estado==="incorporado").length;}
+function escalaAtual(){const idx=clamp(Math.floor((territorioAtual()+S.attr.populacao)/2),[1,10])-1;return ESCALAS[Math.max(0,Math.min(9,idx))];}
+function climaTexto(){let t=S.med.moral>=6&&S.med.ameaca<=3?"tende à <b>Bonança</b>":S.med.ameaca>=6?"tende à <b>Crise</b>":"está <b>equilibrado</b>";
+  return `Clima da próxima estação ${t} — Moral ${S.med.moral}, Ameaça ${S.med.ameaca}.`;}
+function render(){
+  document.getElementById("reinoNome").textContent=S.nome;
+  document.getElementById("founding").style.display=S.fundado?"none":"block";
+  document.getElementById("main").style.display=S.fundado?"block":"none";
+  if(!S.fundado){renderOrigens();return;}
+  const btnM=document.getElementById("btnMestre");
+  if(papel==="jogador"){btnM.style.display="none";if(modoMestre){modoMestre=false;}}else{btnM.style.display="";}
+  document.getElementById("escalaLab").textContent="Escala: "+escalaAtual()+(papel==="jogador"?" · 👁 modo leitura":"");
+  document.getElementById("estacaoLab").textContent=ESTACOES[estacaoAtualIdx()][1];
+  document.getElementById("anoLab").textContent="Ano "+anoAtual();
+  document.getElementById("modo").value=S.modo;document.getElementById("dificuldade").value=S.dificuldade;
+  const medDefs=[["tesouro","Tesouro","tesouro"],["moral","Moral",""],["fama","Fama",""],["ameaca","Ameaça",""]];
+  document.getElementById("meters").innerHTML=medDefs.map(([k,lab,cls])=>{let vcls="";
+    if(k==="moral")vcls=S.med.moral>=6?"good":(S.med.moral<=3?"bad":"");
+    if(k==="ameaca")vcls=S.med.ameaca>=6?"bad":(S.med.ameaca<=2?"good":"");
+    return `<div class="meter ${cls}"><div class="k">${lab}</div><div class="v ${vcls}">${k==="tesouro"?Math.round(S.med[k]):S.med[k]}</div></div>`;}).join("");
+  document.getElementById("clima").innerHTML=climaTexto();
+  document.getElementById("attrs").innerHTML=ATRIBUTOS.map(([k,lab])=>{
+    const extra=k==="populacao"?` <span style="color:var(--muted-tx);font-weight:400">(livre: ${populacaoLivre()})</span>`:"";
+    const mestreBtns=(k==="populacao"&&papel==="mestre")?`<span style="margin-left:6px"><button class="ghost" style="padding:0 6px;font-size:12px" onclick="ajustarPopulacaoManual(-1)">−</button><button class="ghost" style="padding:0 6px;font-size:12px" onclick="ajustarPopulacaoManual(1)">+</button></span>`:"";
+    return `<div class="attr"><div class="lab"><b>${lab}</b>${extra}<span>${S.attr[k]}${mestreBtns}</span></div>
+     <div class="bar"><i style="width:${S.attr[k]*10}%"></i></div><div class="eff">${EFEITO_ATTR[k]}</div></div>`;}).join("")
+    +`<div class="attr" style="opacity:.85"><div class="lab"><b>Território</b><span>${territorioAtual()} hex(es)</span></div>
+     <div class="eff">derivado — nº de assentamentos incorporados, não se compra</div></div>`;
+  const instr=instrumentos();
+  document.getElementById("shop").innerHTML=ATIVOS.map(a=>{
+    const mods=Object.entries(a.mods).map(([k,v])=>`${labelCurto(k)} ${v>0?"+":""}${v}`).join(" · ");
+    const reqOk=!a.reqAttr||Object.entries(a.reqAttr).every(([k,v])=>S.attr[k]>=v);
+    const pode=S.med.tesouro>=a.custo&&reqOk;const temInstr=a.instr&&instr.has(a.instr);
+    const reqTxt=a.reqAttr?Object.entries(a.reqAttr).map(([k,v])=>`${labelCurto(k)} ${v}+`).join(", "):"";
+    return `<div class="asset"><div class="imgslot"><span class="ph">img/assets/${a.img}</span>
+      <img src="img/assets/${a.img}" alt="${a.nome}" onerror="this.remove()"></div>
+      <div class="ab"><div class="an">${a.nome}</div><div class="am">${mods}</div>
+      ${a.instr?`<div class="instr">⚑ ${a.instrTxt}${temInstr?" ✓":""}</div>`:""}
+      ${a.cap?`<div class="instr">⚒ ${a.capTxt}${capacidades().has(a.cap)?" ✓":""}</div>`:""}
+      ${a.reqAttr?`<div class="instr" style="color:${reqOk?'var(--good)':'var(--warn)'}">requer ${reqTxt}</div>`:""}
+      <button class="buy" ${pode?"":"disabled"} onclick="comprarAtivo('${a.id}')">Comprar · ${a.custo}</button></div></div>`;}).join("");
+  document.getElementById("btnAvancar").disabled=false;
+  renderStage(S.eventos||[]);renderFeed();
+  renderMapa();renderLegend();renderExpBar();renderExpInfo();renderChars();renderExpes();renderPropriedades();renderTempo();renderSync();refreshStageHint();
+}
+function renderTempo(){const d=document.getElementById("diaLab");if(d)d.textContent=diaMaisAvancado();
+  const pe=document.getElementById("diasPE");if(pe&&document.activeElement!==pe)pe.value=S.diasPorEstacao;}
+function renderOrigens(){document.getElementById("origensList").innerHTML=ORIGENS.map(o=>{const t=TERRENOS[o.terreno];
+  const spread=ATRIBUTOS.map(([k,l])=>`<span>${l.slice(0,3)} <b>${o.attr[k]}</b></span>`).join("");
+  return `<div class="origem ${selOrigem&&selOrigem.id===o.id?'sel':''}" onclick="selecionarOrigem('${o.id}')">
+    <div class="oh"><div class="swatch" style="background:${t.cor}">${t.sim}</div><div class="on">${o.nome}</div></div>
+    <div class="od">${o.desc}</div><div class="spread">${spread}</div></div>`;}).join("");}
+function selecionarOrigem(id){selOrigem=ORIGENS.find(o=>o.id===id);renderOrigens();
+  document.getElementById("btnFundar").disabled=false;
+  document.getElementById("fundarHint").textContent=`Origem: ${selOrigem.nome} (terreno ${TERRENOS[selOrigem.terreno].nome}).`;}
+function renderStage(compradas){document.getElementById("stage").innerHTML=compradas.map(cardHTML).join("");}
+function cardHTML(c){const nomes={bonanca:"Bonança",cotidiano:"Cotidiano",crise:"Crise"};
+  const tipoTxt={inst:"Imediato",sitio:"Planta um sítio no mapa",rumor:"Revela um hex adiante"}[c.res];
+  const fx=c.res==="inst"?fmtEfeito(c.efeito):"";let acao="";
+  if(S.modo==="jogado"&&c.res==="inst"&&c.decisao&&S.pendentes.find(x=>x.id===c.id))
+    acao=`<div class="opts">${c.decisao.opcoes.map((o,i)=>`<button onclick="decidir('${c.id}',${i})">${o.label}</button>`).join("")}</div>`;
+  else if(c._auto)acao=`<div class="resolved">✓ ${c._auto}</div>`;
+  else if(c._escolhido)acao=`<div class="resolved">✓ ${c._escolhido}</div>`;
+  let onde="";
+  if(c.res==="sitio"&&c._alvo)onde=`<div class="onde"><b>Sítio no mapa:</b> ${c.sitio.nome} — resolva por expedição (${reqTexto(c.sitio.req)}).</div>`;
+  else if(c.res==="rumor"&&c._alvo)onde=`<div class="onde"><b>Rumor:</b> um hex foi revelado no mapa${c.rumorSitio?" com um sítio à espreita":""}.</div>`;
+  else if(c.res==="rumor")onde=`<div class="onde"><b>Rumor:</b> sem terras novas ao alcance desta vez.</div>`;
+  return `<div class="card ${c.baralho}" data-card="${c.id}">
+    <div class="imgslot"><span class="ph">img/cards/${c.id}.jpg</span><img src="img/cards/${c.id}.jpg" alt="" onerror="this.remove()"></div>
+    <div class="body"><div class="deckname">${nomes[c.baralho]}</div><h3>${c.titulo}</h3>
+    <div class="kind">${tipoTxt}</div><div class="txt">${c.txt}</div>${fx?`<div class="fx">${fx}</div>`:""}${onde}${acao}</div></div>`;}
+
+function renderMapa(){const svg=document.getElementById("hexmap");if(!svg)return;
+  const _ea=getExp(expAtiva),_apos=_ea?getHex(_ea.q,_ea.r):null;
+  const pts=S.hexes.map(h=>({h,...axialToPx(h.q,h.r)}));
+  const xs=pts.map(p=>p.x),ys=pts.map(p=>p.y),minX=Math.min(...xs),minY=Math.min(...ys),maxX=Math.max(...xs),maxY=Math.max(...ys);
+  const pad=HEXSIZE+8,W=(maxX-minX)+pad*2,H=(maxY-minY)+pad*2;svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+  let out="";const centers={};pts.forEach(({h,x,y})=>{const cx=x-minX+pad,cy=y-minY+pad;centers[h.q+","+h.r]={cx,cy};
+    const oc=h.estado==="oculto";const showT=!oc||modoMestre;const t=TERRENOS[showT?h.terreno:"desconhecido"];
+    const corners=[];for(let i=0;i<6;i++){const a=Math.PI/180*(60*i-30);corners.push(`${(cx+HEXSIZE*Math.cos(a)).toFixed(1)},${(cy+HEXSIZE*Math.sin(a)).toFixed(1)}`);}
+    const isSel=selHex&&selHex[0]===h.q&&selHex[1]===h.r;
+    let stroke=h.capital?"#c9a24b":(h.estado==="incorporado"?"#8a7a4a":"#00000060"),sw=h.capital?3:1;
+    if(_apos&&hexDist(_apos,h)===1&&h.estado!=="oculto"){stroke="#efe7d8";sw=2.5;}
+    const dim=oc?'opacity="0.55"':(h.estado==="conhecido"?'opacity="0.8"':"");
+    out+=`<polygon class="hex ${isSel?'sel':''}" points="${corners.join(" ")}" fill="${t.cor}" stroke="${stroke}" stroke-width="${sw}" ${dim} onclick="clicaHex(${h.q},${h.r})"></polygon>`;
+    out+=`<text class="hexsym" x="${cx}" y="${cy+5}" text-anchor="middle">${h.capital?"★":t.sim}</text>`;
+    if(h.constr.length)out+=`<text class="hexbadge" x="${cx+HEXSIZE*0.5}" y="${cy-HEXSIZE*0.42}" text-anchor="middle">⌂${h.constr.length}</text>`;
+    if(h.estado==="incorporado"&&!h.capital)out+=`<text class="hexbadge" x="${cx}" y="${(cy-HEXSIZE*0.4).toFixed(1)}" text-anchor="middle" style="font-size:11px;fill:#e8dcc0">⌂${h.nivelAssent||1}</text>`;
+    if(h.sitio){const g=h.sitio.tipo==="ameaca"?"!":(h.sitio.tipo==="recurso"?"✦":"◆");const col=h.sitio.tipo==="ameaca"?"#e07a5f":"#e7c34a";
+      out+=`<text class="hexbadge" x="${cx-HEXSIZE*0.5}" y="${cy-HEXSIZE*0.38}" text-anchor="middle" style="fill:${col};font-size:15px">${g}</text>`;}
+    if(modoMestre&&(h.nota||h.encontro))out+=`<text class="hexbadge" x="${cx+HEXSIZE*0.45}" y="${(cy+HEXSIZE*0.6).toFixed(1)}" text-anchor="middle" style="fill:#efe7d8">✎</text>`;});
+  const drawn=new Set();
+  S.hexes.filter(h=>h.estado==="incorporado").forEach(h=>{DIRS.forEach(([dq,dr])=>{const n=getHex(h.q+dq,h.r+dr);
+    if(n&&n.estado==="incorporado"){const key=[h.q+","+h.r,n.q+","+n.r].sort().join("|");if(drawn.has(key))return;drawn.add(key);
+      const a=centers[h.q+","+h.r],b=centers[n.q+","+n.r];
+      if(a&&b)out+=`<line x1="${a.cx.toFixed(1)}" y1="${a.cy.toFixed(1)}" x2="${b.cx.toFixed(1)}" y2="${b.cy.toFixed(1)}" stroke="#caa96a" stroke-width="3" stroke-dasharray="1 4" stroke-linecap="round" opacity="0.85"></line>`;}});});
+  S.expedicoes.forEach((e,i)=>{const c=centers[e.q+","+e.r];if(!c)return;
+    out+=`<circle cx="${c.cx}" cy="${(c.cy+HEXSIZE*0.32).toFixed(1)}" r="7.5" fill="#efe7d8" stroke="#151310" stroke-width="1.5"></circle>`;
+    out+=`<text x="${c.cx}" y="${(c.cy+HEXSIZE*0.32+3.6).toFixed(1)}" text-anchor="middle" style="font-size:10px;fill:#151310;pointer-events:none">${i+1}</text>`;});
+  svg.innerHTML=out;}
+function clicaHex(q,r){selHex=[q,r];renderMapa();renderExpInfo();}
+function renderExpBar(){
+  const box=document.getElementById("expbar");if(!box)return;
+  if(!S.expedicoes.length){box.innerHTML=`<span class="hint" style="margin:0">Crie uma expedição para explorar. Ela viaja hex a hex gastando dias; o risco vem do terreno selvagem, não do ouro.</span>`;return;}
+  let a=getExp(expAtiva);if(!a){a=S.expedicoes[0];expAtiva=a.id;}
+  const opts=S.expedicoes.map(e=>`<option value="${e.id}" ${expAtiva===e.id?"selected":""}>${esc(e.nome)}</option>`).join("");
+  box.innerHTML=`Comandar <select onchange="expAtiva=this.value;renderMapa();renderExpBar();renderExpInfo();">${opts}</select> · em ${TERRENOS[getHex(a.q,a.r).terreno].nome} · ritmo ${a.ritmo}, ${a.transporte} · dia local <b style="color:var(--accent)">${a.dia==null?S.dias:a.dia}</b> · <span style="color:var(--muted-tx)">cada expedição tem seu próprio relógio; o reino acompanha a mais adiantada</span>`;
+}
+function renderExpInfo(){
+  const box=document.getElementById("hexinfo");if(!box)return;
+  if(!selHex){box.innerHTML="Clique num hex. Comande a expedição ativa (barra acima) e mova-a para hexes vizinhos.";return;}
+  const h=getHex(selHex[0],selHex[1]);if(!h){box.innerHTML="—";return;}
+  if(modoMestre){box.innerHTML=gmHexPanel(h);return;}
+  const ativa=getExp(expAtiva);
+  if(h.estado==="oculto"){
+    let t="Terra desconhecida. Mova uma expedição a um hex vizinho a este para revelá-lo.";
+    box.innerHTML=t;
+    if(ativa&&hexDist(getHex(ativa.q,ativa.r),h)===1)box.innerHTML=t+` <br><span class="req">(não se viaja direto ao oculto)</span>`;
+    return;}
+  let s=`<b>${TERRENOS[h.terreno].nome}</b>${h.capital?" · capital ★":" · "+estadoLabel(h.estado)}`;
+  if(h.constr.length)s+=`<br>Construções: ${h.constr.map(id=>{const a=ATIVOS.find(x=>x.id===id);return a?a.nome:id;}).join(", ")}`;
+  if(h.estado==="incorporado")s+=`<br>Assentamento: <b>${NIVEIS_ASSENT[(h.nivelAssent||1)-1]}</b> · ${hexSeguro(h)?'<span style="color:var(--good)">conectado à capital</span>':'<span style="color:var(--warn)">isolado — risco de encontro</span>'}`;
+  const aqui=expNoHex(h.q,h.r);
+  if(aqui)s+=`<br><span style="color:var(--accent)">◉ ${esc(aqui.nome)} está aqui</span>`;
+  if(h.sitio)s+=`<br><span class="req">${h.sitio.tipo==="ameaca"?"⚠":"✦"} ${h.sitio.nome}:</span> ${h.sitio.txt}${h.sitio.req?` <br>Dica: ${reqTexto(h.sitio.req)} ajuda aqui (não é obrigatório — quem resolve é a expedição).`:""} Recompensa: ${fmtEfeito(h.sitio.recomp,true)}`;
+  let btns="";
+  // mover expedição ativa para cá (adjacente)
+  if(ativa&&hexDist(getHex(ativa.q,ativa.r),h)===1){
+    const mv=custoMov(getHex(ativa.q,ativa.r),h,ativa);
+    const cabe=true;
+    const rl=riscoLabel(riscoMov(h,ativa));
+    btns+=`<button class="primary" ${cabe?"":"disabled"} onclick="moverExp('${ativa.id}',${h.q},${h.r})">Mover ${esc(ativa.nome)} aqui · ${mv.dias}d${mv.transp==="estrada"?" (estrada)":""}${rl!=="nenhum"?" · risco "+rl:""}</button>`;
+  }
+  // resolver sítio: exige expedição no hex
+  if(h.sitio){
+    if(aqui)btns+=`<button class="primary" onclick="expResolver(${h.q},${h.r})">Resolver: ${h.sitio.nome}</button>`;
+    else btns+=`<span class="req">Leve uma expedição até aqui para resolver.</span>`;
+  }
+  // assentar / evoluir
+  if(h.estado==="explorado"&&!h.sitio){const p=podeIncorporar(h);btns+=p.ok?`<button onclick="expIncorporar(${h.q},${h.r})">Assentar arraial · ${p.custo}${p.adj?" (c/ estrada)":""}</button>`:`<span class="req">Não assentável: ${p.motivo}.</span>`;}
+  if(h.estado==="incorporado"){const nv=h.nivelAssent||1;if(nv<NIVEIS_ASSENT.length)btns+=`<button onclick="evoluirAssent(${h.q},${h.r})">Evoluir p/ ${NIVEIS_ASSENT[nv]} · ${40*nv}</button>`;}
+  let spoiler="";
+  if(h.nota||h.encontro)spoiler=`<div style="margin-top:8px"><button class="ghost" style="font-size:12px;padding:4px 8px" onclick="var d=this.nextElementSibling;d.style.display=d.style.display==='none'?'block':'none';">⚠ nota do mestre (spoiler)</button><div style="display:none;margin-top:6px;font-size:12px;color:var(--ink2);background:#00000025;border-radius:6px;padding:8px">${h.nota?'<b>Descrição:</b> '+esc(h.nota)+'<br>':''}${h.encontro?'<b>Encontro:</b> '+esc(h.encontro):''}</div></div>`;
+  box.innerHTML=s+(btns?`<div>${btns}</div>`:"")+spoiler;
+}
+function estadoLabel(e){return{conhecido:"conhecido",explorado:"explorado",incorporado:"incorporado"}[e]||e;}
+function gmHexPanel(h){
+  let s=`<b>${TERRENOS[h.terreno].nome}</b> (${h.q},${h.r}) · ${estadoLabel(h.estado)}${h.capital?" · capital ★":""}`;
+  if(h.sitio)s+=`<br>Sítio de carta: ${h.sitio.nome} (${h.sitio.tipo})`;
+  s+=`<label class="gml">Descrição do hex (spoiler p/ jogadores)</label><textarea class="gmt" onchange="setHexCampo(${h.q},${h.r},'nota',this.value)">${esc(h.nota||"")}</textarea>`;
+  s+=`<label class="gml">Encontro / segredo (oculto aos jogadores)</label><textarea class="gmt" onchange="setHexCampo(${h.q},${h.r},'encontro',this.value)">${esc(h.encontro||"")}</textarea>`;
+  return s;
+}
+function setHexCampo(q,r,campo,val){if(papel!=="mestre")return;const h=getHex(q,r);if(!h)return;h[campo]=val;salvar();renderMapa();}
+function renderLegend(){const usados=[...new Set(S.hexes.filter(h=>h.estado!=="oculto").map(h=>h.terreno))];
+  let out=usados.map(k=>`<div class="li"><span class="sw" style="background:${TERRENOS[k].cor}">${TERRENOS[k].sim}</span>${TERRENOS[k].nome}</div>`).join("");
+  out+=`<div class="li"><span class="sw" style="background:#3a3630;color:#c9a24b">★</span>Capital</div>`;
+  out+=`<div class="li"><span class="sw" style="background:#3a3630;color:#e07a5f">!</span>Sítio de ameaça</div>`;
+  out+=`<div class="li"><span class="sw" style="background:#3a3630;color:#e7c34a">✦</span>Sítio de recurso</div>`;
+  out+=`<div class="li"><span class="sw" style="background:#3a3630;color:#e8dcc0">⌂</span>Assentamento (nível)</div>`;
+  out+=`<div class="li"><span class="sw" style="background:#caa96a"></span>Estrada (território contíguo)</div>`;
+  document.getElementById("legend").innerHTML=out;}
+
+/* helpers */
+function labelCurto(k){const m={tesouro:"Tesouro",moral:"Moral",fama:"Fama",ameaca:"Ameaça",militar:"Militar",economia:"Economia",influencia:"Influência",territorio:"Território",populacao:"População"};return m[k]||k;}
+function fmtEfeito(e,plain){if(!e||!Object.keys(e).length)return plain?"—":"";const s=Object.entries(e).map(([k,v])=>`${plain?"":"<b>"}${labelCurto(k)} ${v>0?"+":""}${v}${plain?"":"</b>"}`).join(", ");return plain?s:"Efeito: "+s;}
+function logClear(){}
+function logBeat(b,t){feedPush(`${b}: ${t}`);}
+function renderFeed(){const l=document.getElementById("log");if(!l)return;const f=S.feed||[];
+  l.innerHTML=f.length?f.map(x=>`<p><span class="beat">Dia ${x.dia}:</span> ${esc(x.txt)}</p>`).join(""):'<p style="color:var(--muted-tx)">Sem acontecimentos ainda. Deixe o tempo correr (mover expedições ou “Passar dias”).</p>';}
+function refreshStageHint(){const h=document.getElementById("stageHint");h.textContent="O tempo corre em dias: renda e eventos acontecem sozinhos. Mova expedições ou use “Passar dias”.";}
+let hintTimer;function flashHint(m){const h=document.getElementById("stageHint");h.textContent=m;h.style.color="var(--bad)";clearTimeout(hintTimer);hintTimer=setTimeout(()=>{h.style.color="";refreshStageHint();},2400);}
+function salvarLocal(){try{localStorage.setItem("kingdom_v12",JSON.stringify(S));}catch(e){}}
+function salvar(){salvarLocal();agendarPush();}
+function carregar(){try{const r=localStorage.getItem("kingdom_v12");return r?JSON.parse(r):null;}catch(e){return null;}}
+/* ===== SINCRONIZAÇÃO NA NUVEM (Supabase) ===== */
+let sb=null,sala=null,sbCanal=null,sbStatus="off",pushTimer=null;const meuCid=Math.random().toString(36).slice(2);
+let papel="mestre",presentes=[]; // papel: "mestre" (edita tudo) | "jogador" (somente leitura)
+function sbPronto(){return !!(SUPA_URL&&SUPA_KEY&&window.supabase);}
+function sbInit(){if(sb||!sbPronto())return;sb=window.supabase.createClient(SUPA_URL,SUPA_KEY);}
+/* Trava de escrita: chame no topo de toda função que muda o estado do jogo. */
+function bloqueadoLeitura(){if(papel==="jogador"){flashHint("Modo jogador: somente leitura — peça ao mestre.");return true;}return false;}
+async function conectarSala(codigo){codigo=(codigo||"").trim();if(!codigo){flashHint("Digite um código de sala.");return;}
+  sbInit();if(!sb){sbStatus="sem chave configurada";renderSync();return;}
+  sala=codigo;sbStatus="conectando…";renderSync();
+  try{const{data,error}=await sb.from(SUPA_TABELA).select("data").eq("codigo",codigo).maybeSingle();
+    if(error)throw error;
+    if(data&&data.data){S=data.data;salvarLocal();}else if(papel==="mestre"){await pushCloud();}
+    assinarSala();sbStatus="conectado";render();
+  }catch(e){sbStatus="erro: "+(e.message||e);renderSync();}
+}
+function assinarSala(){if(sbCanal&&sb)sb.removeChannel(sbCanal);
+  sbCanal=sb.channel("k_"+sala,{config:{presence:{key:meuCid}}})
+    .on("postgres_changes",{event:"*",schema:"public",table:SUPA_TABELA,filter:"codigo=eq."+sala},p=>{
+      const d=p.new&&p.new.data;if(!d||d._cid===meuCid)return;S=d;salvarLocal();render();})
+    .on("presence",{event:"sync"},()=>{
+      const st=sbCanal.presenceState();presentes=Object.values(st).flat();renderSync();})
+    .subscribe(async(status)=>{if(status==="SUBSCRIBED")await sbCanal.track({papel,em:Date.now()});});}
+async function pushCloud(){if(!sb||!sala||papel!=="mestre")return;try{await sb.from(SUPA_TABELA).upsert({codigo:sala,data:{...S,_cid:meuCid},updated_at:new Date().toISOString()});}catch(e){}}
+function agendarPush(){if(!sb||!sala||papel!=="mestre")return;clearTimeout(pushTimer);pushTimer=setTimeout(pushCloud,600);}
+function desconectar(){if(sbCanal&&sb)sb.removeChannel(sbCanal);sbCanal=null;sala=null;presentes=[];sbStatus="off";renderSync();}
+function mudarPapel(p){papel=p;if(sbCanal)sbCanal.track({papel,em:Date.now()});render();}
+function renderSync(){const s=document.getElementById("syncStatus");if(!s)return;
+  const base=!SUPA_KEY?"cole a chave no topo do index.html":(sala?("conectado · sala “"+sala+"”"):(sbStatus==="off"?"pronta — digite uma sala e conecte":sbStatus));
+  let quem="";
+  if(sala&&presentes.length){const nm=presentes.filter(p=>p.papel==="mestre").length,nj=presentes.filter(p=>p.papel==="jogador").length;
+    quem=` · online: ${presentes.length} (${nm} mestre, ${nj} jogador${nj===1?"":"es"})`;}
+  s.textContent="nuvem: "+base+quem;}
+
+/* ============ PERSONAGENS ============ */
+function addChar(){if(bloqueadoLeitura())return;if(S.personagens.length>=aventureirosMax()){flashHint("Sem aventureiros disponíveis — aumente População ou construa propriedades.");return;}
+  S.personagens.push({id:uid(),nome:"Novo personagem",rank:"",info:"",recursos:0,vida:10,vidaMax:10,funcao:"",notas:"",tags:"",expedicaoId:null});salvar();render();}
+/* geradores aleatórios e recrutamento */
+const NOMES_REINO=["Valdária","Montébria","Kaeloria","Terra Vermelha","Aldebrand","Norwick","Pedra Alta","Rio Claro","Vale Fundo","Corvália","Marlanda","Bruma Cinza","Ostfal","Carvalho Negro","Sereia","Alto Solar"];
+const EXP_SUB=["Companhia","Bandeira","Marcha","Vanguarda","Caravana","Expedição","Lança","Bando"];
+const EXP_ADJ=["do Corvo","Cinzenta","de Ferro","do Norte","Errante","da Bruma","Vermelha","do Lobo","Perdida","do Alvorecer","das Pedras","do Sul"];
+const NOMES_PESSOA=["Aldric","Bran","Cora","Dara","Eren","Fira","Gorm","Hilda","Ivo","Jora","Kaya","Lom","Mira","Nael","Osric","Petra","Runa","Sten","Tova","Ulf","Vesna","Wyn","Yara","Zeb","Alba","Doran","Enna","Faro","Groa"];
+const INFO_PESSOA=["veterano de fronteira","curioso e teimoso","fala pouco, observa muito","ex-contrabandista","devoto de velhos ritos","caçador experiente","tagarela e sortudo","cauteloso ao extremo","busca redenção","procura fortuna","forasteiro de terras distantes","leal até o fim"];
+const TAGS_PESSOA=["batedor","curandeiro","combatente","negociador","explorador","estudioso","montanhês","navegante"];
+const SOBRENOMES=["Bran","Correia","Ferraz","Silvano","Torvik","Campos","Duvall","Vann","Wint","Aldegar","Rocha","Marnvale","Petrov","Adelin","Corrado","Estel","Falk","Grum"];
+function pick(a){return a[Math.floor(Math.random()*a.length)];}
+function nomeReinoAleatorio(){return pick(NOMES_REINO);}
+function nomeExpAleatorio(){return pick(EXP_SUB)+" "+pick(EXP_ADJ);}
+function addCharAleatorio(sugestao){
+  if(bloqueadoLeitura())return;
+  if(S.personagens.length>=aventureirosMax()){flashHint("Sem aventureiros disponíveis — aumente População ou construa propriedades.");return;}
+  S.personagens.push({id:uid(),nome:pick(NOMES_PESSOA),rank:"",info:sugestao||pick(INFO_PESSOA),recursos:0,vida:10,vidaMax:10,funcao:"",notas:"",tags:pick(TAGS_PESSOA),expedicaoId:null});salvar();render();}
+function propsComRecruta(){const m=new Map();S.ativos.forEach(o=>{const a=ATIVOS.find(x=>x.id===o.id);if(a&&a.recruta&&!m.has(a.id))m.set(a.id,a);});return[...m.values()];}
+function aventureirosMax(){let n=2+Math.floor(S.attr.populacao/2);S.ativos.forEach(o=>{const a=ATIVOS.find(x=>x.id===o.id);if(a&&a.recruta)n+=1;});return n;}
+
+/* ===== MÃO DE OBRA =====
+   Alocar 1 população a uma propriedade não é "1 pessoa" — representa uma família/agregado
+   que passa a trabalhar ali. Gera nomes aleatórios, editáveis por jogadores e mestre.
+   Em propriedades de treino (recruta), a mão de obra alocada acumula dias e pode, por ação
+   manual, "formar" um aventureiro — nunca automático — no nível que a propriedade sustenta. */
+const DIAS_POR_NIVEL=20;
+const TIERS_RECRUTA=["iniciante","experiente","veterano","lendário"];
+function populacaoAlocada(){let n=0;S.ativos.forEach(o=>n+=(o.trabalhadores||[]).length);return n;}
+function populacaoLivre(){return Math.max(0,S.attr.populacao-populacaoAlocada());}
+function vagasProp(o){return o.nivel+1;}
+function alocarTrabalhador(propUid){
+  if(bloqueadoLeitura())return;
+  const o=S.ativos.find(x=>x.uid===propUid);if(!o)return;const a=ATIVOS.find(x=>x.id===o.id);if(!a)return;
+  o.trabalhadores=o.trabalhadores||[];
+  if(o.trabalhadores.length>=vagasProp(o)){flashHint("Sem vagas nesta propriedade neste nível.");return;}
+  if(populacaoLivre()<=0){flashHint("Sem população livre para alocar.");return;}
+  const nome=pick(NOMES_PESSOA),familia=pick(SOBRENOMES);
+  o.trabalhadores.push({id:uid(),nome,familia,dias:0});
+  feedPush(`Família ${familia} (${nome}) passa a trabalhar em ${a.nome}. (Livre: ${populacaoLivre()-1})`);
+  salvar();render();
+}
+function desalocarTrabalhador(propUid,workerId){
+  if(bloqueadoLeitura())return;
+  const o=S.ativos.find(x=>x.uid===propUid);if(!o||!o.trabalhadores)return;
+  const t=o.trabalhadores.find(x=>x.id===workerId);if(!t)return;
+  const a=ATIVOS.find(x=>x.id===o.id);
+  o.trabalhadores=o.trabalhadores.filter(x=>x.id!==workerId);
+  feedPush(`${t.nome} da família ${t.familia} deixa o trabalho em ${a?a.nome:"?"}. (Livre: ${populacaoLivre()})`);
+  salvar();render();
+}
+function renomearTrabalhador(propUid,workerId,campo,val){
+  const o=S.ativos.find(x=>x.uid===propUid);if(!o)return;
+  const t=(o.trabalhadores||[]).find(x=>x.id===workerId);if(!t)return;
+  t[campo]=val;salvar();render();
+}
+function formarAventureiro(propUid,workerId){
+  if(bloqueadoLeitura())return;
+  const o=S.ativos.find(x=>x.uid===propUid);if(!o)return;const a=ATIVOS.find(x=>x.id===o.id);if(!a||!a.recruta)return;
+  const t=(o.trabalhadores||[]).find(x=>x.id===workerId);if(!t)return;
+  if(t.dias<DIAS_POR_NIVEL){flashHint(`Precisa de mais ${DIAS_POR_NIVEL-t.dias} dia(s) de treinamento.`);return;}
+  if(S.personagens.length>=aventureirosMax()){flashHint("Sem vaga de aventureiro disponível.");return;}
+  const tier=TIERS_RECRUTA[Math.min(o.nivel,TIERS_RECRUTA.length)-1]||TIERS_RECRUTA[0];
+  S.personagens.push({id:uid(),nome:t.nome+" "+t.familia,rank:"",info:`${a.recruta.sugestao} (${tier})`,recursos:0,vida:10,vidaMax:10,funcao:"",notas:"",tags:pick(TAGS_PESSOA),expedicaoId:null});
+  o.trabalhadores=o.trabalhadores.filter(x=>x.id!==workerId);
+  feedPush(`${t.nome} da família ${t.familia}, treinado em ${a.nome}, torna-se aventureiro ${tier}. (Livre: ${populacaoLivre()})`);
+  salvar();render();
+}
+function evoluirPropriedade(u){if(bloqueadoLeitura())return;const o=S.ativos.find(x=>x.uid===u);if(!o)return;const a=ATIVOS.find(x=>x.id===o.id);if(!a)return;
+  const custo=30*o.nivel;if(S.med.tesouro<custo){flashHint("Tesouro insuficiente ("+custo+").");return;}
+  S.med.tesouro-=custo;o.nivel++;aplicar(a.mods);
+  logClear();logBeat("Propriedade",`${a.nome} evoluiu para nível ${o.nivel}. Bônus reaplicado.`);salvar();render();}
+function destinoOpts(){
+  let out=`<option value="">Reino (dia a dia)</option>`;
+  if(S.expedicoes.length)out+=`<optgroup label="Expedições">`+S.expedicoes.map(e=>`<option value="exp:${e.id}">${esc(e.nome)}</option>`).join("")+`</optgroup>`;
+  if(S.personagens.length)out+=`<optgroup label="Personagens">`+S.personagens.map(c=>`<option value="char:${c.id}">${esc(c.nome)} (${Number(c.recursos)||0})</option>`).join("")+`</optgroup>`;
+  return out;
+}
+function renderLojaHTML(o,a){
+  const cat=LOJAS[a.loja];if(!cat)return"";
+  const itens=itensDaLoja(o);
+  const prox=cat.itens.filter(it=>it.nivel===o.nivel+1);
+  const linhas=itens.map(it=>`<div class="lrow">
+      <span class="ln">${esc(it.nome)}</span>
+      <span class="lp" ${papel==="mestre"?`onclick="lojaEditarPreco('${o.uid}','${it.id}',${it.preco})" title="editar preço (mestre)"`:""}>${it.preco}</span>
+      <select class="destSel">${destinoOpts()}</select>
+      <button onclick="comprarItemLoja('${o.uid}','${it.id}', this.previousElementSibling.value)">Comprar</button>
+      ${papel==="mestre"&&it.custom?`<button class="ghost" title="remover" onclick="lojaRemoverItem('${o.uid}','${it.id}')">✕</button>`:""}
+    </div>`).join("");
+  return `<div class="loja"><div class="ltitulo">${cat.titulo}</div>
+    ${linhas||'<span class="hint" style="margin:0">sem itens neste nível</span>'}
+    ${prox.length?`<div class="hint" style="margin:4px 0 0">evolua para nível ${o.nivel+1} e destrave: ${prox.map(p=>esc(p.nome)).join(", ")}</div>`:""}
+    ${papel==="mestre"?`<button class="ghost" style="font-size:11px;padding:3px 8px;margin-top:6px" onclick="lojaAddItem('${o.uid}')">+ item (mestre)</button>`:""}
+  </div>`;
+}
+function renderMaoDeObra(o,a){
+  const vagas=vagasProp(o),trabs=o.trabalhadores||[];
+  const linhas=trabs.map(t=>{
+    let acao="";
+    if(a.recruta){
+      const pronto=t.dias>=DIAS_POR_NIVEL;
+      const tier=TIERS_RECRUTA[Math.min(o.nivel,TIERS_RECRUTA.length)-1]||TIERS_RECRUTA[0];
+      acao=pronto?`<button onclick="formarAventureiro('${o.uid}','${t.id}')">Formar aventureiro (${tier})</button>`
+                 :`<span class="hint" style="margin:0">treinando: ${t.dias}/${DIAS_POR_NIVEL}d</span>`;
+    }
+    return `<div class="trow">
+      <input class="tn" value="${esc(t.nome)}" onchange="renomearTrabalhador('${o.uid}','${t.id}','nome',this.value)">
+      <input class="tf" value="${esc(t.familia)}" onchange="renomearTrabalhador('${o.uid}','${t.id}','familia',this.value)">
+      ${acao}
+      <button class="ghost" title="dispensar" onclick="desalocarTrabalhador('${o.uid}','${t.id}')">✕</button>
+    </div>`;
+  }).join("");
+  return `<div class="maodeobra"><div class="ltitulo">Mão de obra · ${trabs.length}/${vagas} vaga(s)</div>
+    ${linhas||'<span class="hint" style="margin:0">nenhuma família alocada</span>'}
+    <button class="ghost" style="font-size:11px;padding:3px 8px;margin-top:6px" onclick="alocarTrabalhador('${o.uid}')">+ alocar 1 população</button>
+  </div>`;
+}
+function renderPropriedades(){const box=document.getElementById("props");if(!box)return;
+  if(!S.ativos.length){box.innerHTML=`<span class="hint" style="margin:0">Nenhuma propriedade ainda. Compre na loja acima; elas aparecem aqui e podem evoluir.</span>`;return;}
+  box.innerHTML=S.ativos.map(o=>{const a=ATIVOS.find(x=>x.id===o.id);if(!a)return"";
+    const mods=Object.entries(a.mods).map(([k,v])=>`${labelCurto(k)} +${v}`).join(" · ");
+    return `<div class="prop"><div class="pimg"><span class="ph">img/assets/${a.img}</span><img src="img/assets/${a.img}" onerror="this.remove()"></div>
+      <div class="pb"><div class="pn">${a.nome} <span class="pnv">Nível ${o.nivel}</span></div>
+      <div class="pm">${mods}${a.instr?" · ⚑ "+a.instrTxt:""}${a.cap?" · ⚒ "+a.capTxt:""}${a.recruta?" · ♟ treina: "+a.recruta.sugestao:""}</div>
+      <button class="buy" onclick="evoluirPropriedade('${o.uid}')">Evoluir · ${30*o.nivel}</button>
+      ${renderMaoDeObra(o,a)}
+      ${a.loja?renderLojaHTML(o,a):""}</div></div>`;}).join("");}
+function setChar(id,campo,val){if(bloqueadoLeitura())return;const c=S.personagens.find(x=>x.id===id);if(!c)return;c[campo]=(campo==="expedicaoId"&&!val)?null:val;salvar();if(campo==="expedicaoId")render();}
+/* Troca de expedição é sempre agência do personagem: só sai de uma expedição em campo se
+   estiver numa cidade/assentamento (incorporado) ou se topar com a nova expedição no mesmo
+   hex e no mesmo dia local (encontro). Sem expedição atual, a primeira atribuição é livre. */
+function setCharExpedicao(id,val){
+  if(bloqueadoLeitura())return;
+  const c=S.personagens.find(x=>x.id===id);if(!c)return;
+  const atual=c.expedicaoId;
+  if(atual&&val!==atual){
+    const cur=getExp(atual);
+    if(cur){
+      const curHex=getHex(cur.q,cur.r);
+      const naCidade=!!(curHex&&curHex.estado==="incorporado");
+      let encontro=false;
+      if(val){const alvo=getExp(val);if(alvo&&alvo.q===cur.q&&alvo.r===cur.r&&(alvo.dia||0)===(cur.dia||0))encontro=true;}
+      if(!naCidade&&!encontro){
+        flashHint(`${c.nome} só troca de expedição numa cidade/assentamento, ou encontrando a nova expedição no mesmo hex e no mesmo dia.`);
+        render();return;
+      }
+    }
+  }
+  c.expedicaoId=val||null;salvar();render();
+}
+function delChar(id){if(bloqueadoLeitura())return;S.personagens=S.personagens.filter(x=>x.id!==id);salvar();render();}
+let charDetalhe=new Set();
+function toggleCharDetalhe(id){if(charDetalhe.has(id))charDetalhe.delete(id);else charDetalhe.add(id);renderChars();}
+function renderChars(){
+  const box=document.getElementById("chars");if(!box)return;
+  const max=aventureirosMax(),atual=S.personagens.length,cheio=atual>=max;
+  const dis=cheio?"disabled":"";
+  let recBtns=`<button class="ghost" ${dis} onclick="addCharAleatorio()">🎲 aventureiro</button><button class="ghost" ${dis} onclick="addChar()">+ em branco</button>`;
+  propsComRecruta().forEach(a=>{recBtns+=`<button class="ghost" ${dis} title="${esc(a.recruta.sugestao)}" onclick="addCharAleatorio('${esc(a.recruta.sugestao)}')">+ ${esc(a.nome)}</button>`;});
+  const head=`<div class="charhead"><span class="cap">Aventureiros <b>${atual}/${max}</b> <span style="color:var(--muted-tx)">(População + propriedades)</span></span>${recBtns}</div>`;
+  let tabela;
+  if(!S.personagens.length)tabela=`<span class="hint" style="margin:0">Nenhum personagem ainda. Recrute um aventureiro acima.</span>`;
+  else{
+    const rows=S.personagens.map(c=>{
+      const opts=`<option value="">—</option>`+S.expedicoes.map(e=>`<option value="${e.id}" ${c.expedicaoId===e.id?"selected":""}>${esc(e.nome)}</option>`).join("");
+      const aberto=charDetalhe.has(c.id);
+      const principal=`<tr>
+        <td><input value="${esc(c.nome)}" onchange="setChar('${c.id}','nome',this.value)"></td>
+        <td><input value="${esc(c.rank)}" placeholder="nível/rank" onchange="setChar('${c.id}','rank',this.value)"></td>
+        <td><input value="${esc(c.info)}" placeholder="info geral" onchange="setChar('${c.id}','info',this.value)"></td>
+        <td><input type="number" step="1" style="width:64px" value="${Number(c.recursos)||0}" placeholder="0" title="recurso pessoal (bolsa própria)" onchange="setChar('${c.id}','recursos',parseFloat(this.value)||0)"></td>
+        <td style="white-space:nowrap"><input type="number" step="1" style="width:40px" value="${Number(c.vida)||0}" title="vida atual" onchange="setChar('${c.id}','vida',parseFloat(this.value)||0)">/<input type="number" step="1" style="width:40px" value="${Number(c.vidaMax)||0}" title="vida máxima" onchange="setChar('${c.id}','vidaMax',parseFloat(this.value)||0)"></td>
+        <td><input value="${esc(c.funcao||"")}" placeholder="função na expedição" onchange="setChar('${c.id}','funcao',this.value)"></td>
+        <td><input value="${esc(c.tags)}" placeholder="tags" onchange="setChar('${c.id}','tags',this.value)"></td>
+        <td><select onchange="setCharExpedicao('${c.id}',this.value)">${opts}</select></td>
+        <td><button class="ghost" title="detalhes / notas" onclick="toggleCharDetalhe('${c.id}')">${aberto?"▴":"▾"}</button></td>
+        <td><button class="ghost" title="remover" onclick="delChar('${c.id}')">✕</button></td></tr>`;
+      const detalhe=aberto?`<tr><td colspan="10" style="padding:2px 4px 12px">
+        <label class="gml">Notas / background — desenvolva o personagem aqui</label>
+        <textarea class="gmt" placeholder="história, motivações, ganchos de aventura..." onchange="setChar('${c.id}','notas',this.value)">${esc(c.notas||"")}</textarea>
+      </td></tr>`:"";
+      return principal+detalhe;
+    }).join("");
+    tabela=`<div style="overflow-x:auto"><table class="ctab"><thead><tr><th>Nome</th><th>Nível/Rank</th><th>Info</th><th>Recurso</th><th>Vida</th><th>Função</th><th>Tags</th><th>Expedição</th><th></th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
+  box.innerHTML=head+tabela;
+}
+
+/* ============ EXPEDIÇÕES ============ */
+function addExp(){if(bloqueadoLeitura())return;const id=uid();S.expedicoes.push({id,nome:nomeExpAleatorio(),q:0,r:0,transporte:"a pé",ritmo:"normal",bolsa:0,divida:0,dia:S.dias,diasUsados:0,itens:[],log:[]});expAtiva=id;salvar();render();}
+function addItem(id){if(bloqueadoLeitura())return;const e=getExp(id),v=prompt("Item / tesouro adquirido pela expedição:");if(!v||!v.trim())return;e.itens=e.itens||[];e.itens.push(v.trim());expLog(e,`Adquiriu: ${v.trim()}.`);salvar();render();}
+function delItem(id,i){if(bloqueadoLeitura())return;const e=getExp(id);if(e.itens)e.itens.splice(i,1);salvar();render();}
+function repassarCapital(id){if(bloqueadoLeitura())return;const e=getExp(id),a=pedeValor("Repassar quanto da bolsa à capital? (gastos na cidade / impostos)",Math.max(1,Math.floor((e.bolsa||0)*0.2)));if(!a)return;const v=Math.min(a,e.bolsa);if(v<=0){flashHint("Bolsa vazia.");return;}e.bolsa-=v;S.med.tesouro+=v;expLog(e,`Repassou ${v} à capital (gastos/impostos).`);salvar();render();}
+function setExp(id,campo,val){if(bloqueadoLeitura())return;const e=getExp(id);if(!e)return;e[campo]=val;salvar();render();}
+function delExp(id){if(bloqueadoLeitura())return;S.personagens.forEach(p=>{if(p.expedicaoId===id)p.expedicaoId=null;});S.expedicoes=S.expedicoes.filter(x=>x.id!==id);if(expAtiva===id)expAtiva=null;salvar();render();}
+function expLog(e,txt){e.log.unshift({dia:(e.dia==null?S.dias:e.dia),txt});}
+function diaMaisAvancado(){return S.dias;}
+function pedeValor(msg,def){const v=parseInt(prompt(msg,def));return(!v||v<=0)?0:v;}
+function financiar(id){if(bloqueadoLeitura())return;const e=getExp(id),a=pedeValor("Financiar quanto do Tesouro? (doação, sem dívida)",50);if(!a)return;if(S.med.tesouro<a){flashHint("Tesouro insuficiente.");return;}S.med.tesouro-=a;e.bolsa+=a;expLog(e,`Financiada pelo reino: +${a} (doação).`);salvar();render();}
+function emprestar(id){if(bloqueadoLeitura())return;const e=getExp(id),a=pedeValor("Emprestar quanto do Tesouro? (vira dívida)",50);if(!a)return;if(S.med.tesouro<a){flashHint("Tesouro insuficiente.");return;}S.med.tesouro-=a;e.bolsa+=a;e.divida+=a;expLog(e,`Empréstimo do reino: +${a} (dívida sobe p/ ${e.divida}).`);salvar();render();}
+function quitar(id){if(bloqueadoLeitura())return;const e=getExp(id),a=pedeValor("Quitar quanto da dívida?",Math.min(e.bolsa,e.divida));if(!a)return;const v=Math.min(a,e.bolsa,e.divida);if(v<=0){flashHint("Sem bolsa ou dívida.");return;}e.bolsa-=v;e.divida-=v;S.med.tesouro+=v;expLog(e,`Dívida quitada: −${v} (resta ${e.divida}).`);salvar();render();}
+function aporte(id){if(bloqueadoLeitura())return;const e=getExp(id),a=pedeValor("Aporte próprio dos jogadores:",30);if(!a)return;e.bolsa+=a;expLog(e,`Aporte dos jogadores: +${a}.`);salvar();render();}
+function gastoExp(id){if(bloqueadoLeitura())return;const e=getExp(id),a=pedeValor("Registrar gasto da expedição:",10);if(!a)return;e.bolsa-=a;expLog(e,`Gasto: −${a} (bolsa ${e.bolsa}).`);salvar();render();}
+function renderExpes(){
+  const box=document.getElementById("exps");if(!box)return;
+  if(!S.expedicoes.length){box.innerHTML=`<span class="hint" style="margin:0">Nenhuma expedição. Crie uma para levar personagens ao hexcrawl.</span>`;return;}
+  box.innerHTML=S.expedicoes.map(e=>{
+    const hex=getHex(e.q,e.r),seguro=hexSeguro(hex);
+    const membros=S.personagens.filter(p=>p.expedicaoId===e.id);
+    const party=membros.length?membros.map(p=>`<span class="chip" title="dia ${e.dia==null?S.dias:e.dia} · recurso ${Number(p.recursos)||0} · vida ${Number(p.vida)||0}/${Number(p.vidaMax)||0}">${esc(p.nome)}${p.funcao?" · "+esc(p.funcao):""} — dia ${e.dia==null?S.dias:e.dia} · ◎${Number(p.recursos)||0} · ♥${Number(p.vida)||0}/${Number(p.vidaMax)||0}</span>`).join(""):`<span class="hint" style="margin:0">sem membros — atribua na tabela de personagens</span>`;
+    const tsel=(campo,vals)=>`<select onchange="setExp('${e.id}','${campo}',this.value)">`+vals.map(v=>`<option ${e[campo]===v?"selected":""}>${v}</option>`).join("")+`</select>`;
+    const risco=seguro?`<span style="color:var(--good)">território seguro</span>`:`<span style="color:var(--warn)">selvagem — risco de encontro${e.ritmo==="forçado"?" (ritmo forçado ↑)":""}</span>`;
+    const logs=(e.log||[]).slice(0,4).map(l=>`<div class="elog">Dia ${l.dia}: ${esc(l.txt)}</div>`).join("")||`<div class="hint" style="margin:0">sem registros</div>`;
+    return `<div class="exp">
+      <div class="eh"><input class="ename" value="${esc(e.nome)}" onchange="setExp('${e.id}','nome',this.value)"><button class="ghost" title="nome aleatório" onclick="setExp('${e.id}','nome',nomeExpAleatorio())">🎲</button><button class="ghost" onclick="delExp('${e.id}')">✕</button></div>
+      <div class="erow">◈ ${hex?TERRENOS[hex.terreno].nome:"—"} (${e.q},${e.r}) · ${risco}</div>
+      <div class="erow">Dia local <b style="color:var(--accent)">${e.dia==null?S.dias:e.dia}</b>${(e.dia!=null&&e.dia<S.dias)?` <span class="hint" style="margin:0">(reino já vai no dia ${S.dias} — esta expedição está atrasada)</span>`:""} · em campanha há ${e.diasUsados||0}d</div>
+      <div class="erow">Transporte ${tsel("transporte",["a pé","montado","embarcação"])} Ritmo ${tsel("ritmo",["cauteloso","normal","forçado"])}</div>
+      <div class="erow">Bolsa <b style="color:var(--accent)">${e.bolsa}</b> · Dívida c/ reino <b style="color:${e.divida>0?'var(--bad)':'var(--ink2)'}">${e.divida}</b></div>
+      <div class="ebtns"><button onclick="aporte('${e.id}')">Aporte</button><button onclick="financiar('${e.id}')">Financiar</button><button onclick="emprestar('${e.id}')">Emprestar</button><button onclick="quitar('${e.id}')" ${e.divida>0?"":"disabled"}>Quitar</button><button onclick="gastoExp('${e.id}')">Gasto</button><button onclick="repassarCapital('${e.id}')" title="gastos na cidade / impostos">Repassar à capital</button></div>
+      <div class="erow">Inventário: <span class="inv">${(e.itens&&e.itens.length)?e.itens.map((it,i)=>`<span class="it">${esc(it)}<button title="remover" onclick="delItem('${e.id}',${i})">✕</button></span>`).join(""):'<span class="hint" style="margin:0">vazio</span>'}</span> <button class="ghost" style="font-size:11px;padding:2px 7px" onclick="addItem('${e.id}')">+ item</button></div>
+      <div class="party">${party}</div>
+      <div class="elogs">${logs}</div></div>`;}).join("");
+}
+
+/* eventos UI */
+document.getElementById("btnAvancar").onclick=()=>passarDias(7);
+document.getElementById("btnDia1").onclick=()=>passarDias(1);
+document.getElementById("btnReset").onclick=()=>{if(confirm("Recomeçar do zero? O reino atual será perdido.")){S=estadoInicial();selOrigem=null;selHex=null;salvar();render();}};
+document.getElementById("modo").onchange=e=>{S.modo=e.target.value;salvar();render();};
+document.getElementById("dificuldade").onchange=e=>{S.dificuldade=e.target.value;salvar();render();};
+document.getElementById("btnRename").onclick=()=>{const n=prompt("Nome do reino:",S.nome);if(n&&n.trim()){S.nome=n.trim();salvar();render();}};
+document.getElementById("btnFundar").onclick=fundar;
+document.getElementById("btnRolar").onclick=()=>selecionarOrigem(ORIGENS[Math.floor(Math.random()*ORIGENS.length)].id);
+document.getElementById("btnAddExp").onclick=addExp;
+document.getElementById("diasPE").onchange=e=>{const v=parseInt(e.target.value);if(v>0){S.diasPorEstacao=v;salvar();}};
+document.getElementById("btnHardReset").onclick=()=>{if(confirm("Apagar TUDO e recomeçar do zero?")){try{localStorage.removeItem("kingdom_v12");}catch(e){}S=estadoInicial();selOrigem=null;selHex=null;expAtiva=null;salvar();render();}};
+document.getElementById("btnNomeReino").onclick=()=>{document.getElementById("nomeInput").value=nomeReinoAleatorio();};
+document.getElementById("btnNomeDado").onclick=()=>{S.nome=nomeReinoAleatorio();salvar();render();};
+document.getElementById("btnMestre").onclick=()=>{if(papel!=="mestre"){flashHint("Só o mestre vê o mapa completo.");return;}modoMestre=!modoMestre;document.getElementById("btnMestre").textContent=modoMestre?"👁 Modo Jogador":"👁 Modo Mestre";render();};
+document.getElementById("btnConectar").onclick=()=>conectarSala(document.getElementById("salaInput").value);
+document.getElementById("btnDesconectar").onclick=desconectar;
+document.getElementById("papelSel").onchange=e=>mudarPapel(e.target.value);
+render();
+</script>
+</body>
+</html>
