@@ -4,22 +4,34 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kingdom — Reino</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&display=swap">
 <style>
   :root{
     --bg:#1c1a17;--panel:#26231f;--panel2:#2f2b26;--line:#413b33;
     --ink:#efe7d8;--ink2:#c7bca6;--muted-tx:#9a9080;
     --accent:#c9a24b;--good:#6fae6a;--bad:#c86b5a;--warn:#d6a24a;--info:#6f9bc4;--radius:12px;
+    --font-display:'Cinzel',serif;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5;font-size:15px}
-  h1,h2,h3{font-weight:600;margin:0}
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5;font-size:15px;
+    background-image:linear-gradient(rgba(20,17,13,.94),rgba(20,17,13,.94)),url('img/ui/parchment.jpg');
+    background-size:auto,700px;background-repeat:no-repeat,repeat}
+  h1,h2,h3{font-weight:600;margin:0;font-family:var(--font-display);letter-spacing:.3px}
   .wrap{max-width:1180px;margin:0 auto;padding:18px}
   header.top{display:flex;flex-wrap:wrap;align-items:center;gap:14px;border:1px solid var(--line);
-    background:var(--panel);border-radius:var(--radius);padding:14px 18px}
-  header.top h1{font-size:20px;letter-spacing:.5px;display:inline}
-  .crest{width:44px;height:44px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);
-    display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:22px;flex-shrink:0}
+    background:
+      url('img/ui/corner_tl.png') left -2px top -2px no-repeat,
+      url('img/ui/corner_tr.png') right -2px top -2px no-repeat,
+      url('img/ui/corner_bl.png') left -2px bottom -2px no-repeat,
+      url('img/ui/corner_br.png') right -2px bottom -2px no-repeat,
+      linear-gradient(rgba(38,35,31,.96),rgba(38,35,31,.96)),url('img/ui/parchment.jpg');
+    background-size:64px,64px,64px,64px,auto,600px;
+    border-radius:var(--radius);padding:14px 22px;position:relative}
+  header.top h1{font-size:22px;letter-spacing:.8px;display:inline}
+  .divider{display:block;margin:14px auto;max-width:420px;width:100%;opacity:.85}
+  .crest{width:48px;height:48px;flex-shrink:0;background:url('img/ui/crest.png') center/contain no-repeat}
   .spacer{flex:1}
   .season-badge{text-align:right;font-size:13px;color:var(--ink2)}
   .season-badge b{color:var(--accent);font-size:16px;display:block}
@@ -32,8 +44,9 @@
   button.primary:hover{filter:brightness(1.08)} button:disabled{opacity:.45;cursor:not-allowed} button.ghost{background:transparent}
   .grid{display:grid;grid-template-columns:300px 1fr;gap:16px;margin-top:6px}
   @media(max-width:820px){.grid{grid-template-columns:1fr}}
-  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:16px}
-  .panel h2{font-size:13px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted-tx);margin-bottom:12px}
+  .panel{background:linear-gradient(rgba(38,35,31,.95),rgba(38,35,31,.95)),url('img/ui/parchment.jpg');
+    background-size:auto,500px;border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:16px}
+  .panel h2{font-size:13px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted-tx);margin-bottom:12px;font-family:var(--font-display)}
   .panel h2 .sub{text-transform:none;letter-spacing:0;font-size:12px;color:#6f675a;font-weight:400}
   .attr{margin-bottom:11px;cursor:default}
   .attr .lab{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
@@ -42,16 +55,23 @@
   .bar{height:7px;background:#00000030;border-radius:4px;overflow:hidden}
   .bar i{display:block;height:100%;background:linear-gradient(90deg,#9c7b2e,var(--accent))}
   .meters{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-  .meter{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px}
+  .meter{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px;position:relative}
   .meter .k{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted-tx)}
   .meter .v{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px}
-  .meter.tesouro{grid-column:1/-1;background:#332b18;border-color:#5a4a22} .meter.tesouro .v{color:var(--accent)}
+  .meter.tesouro{grid-column:1/-1;background:#332b18;border-color:#5a4a22;padding-right:56px} .meter.tesouro .v{color:var(--accent)}
+  .meter.tesouro::after{content:"";position:absolute;right:8px;top:50%;transform:translateY(-50%);width:42px;height:42px;
+    background:url('img/ui/treasure.png') center/contain no-repeat;opacity:.9}
+  .meter.fama{padding-right:38px}
+  .meter.fama::after{content:"";position:absolute;right:8px;top:50%;transform:translateY(-50%);width:24px;height:24px;
+    background:url('img/ui/res_banner.png') center/contain no-repeat;opacity:.85}
   .meter .v.good{color:var(--good)} .meter .v.bad{color:var(--bad)}
   .tag{font-size:12px;color:var(--muted-tx)}
   .clima{font-size:12px;color:var(--ink2);margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)} .clima b{color:var(--ink)}
   .log{max-height:150px;overflow:auto;font-size:13px;color:var(--ink2);border:1px dashed var(--line);
     border-radius:8px;padding:10px;margin-bottom:14px;background:#00000020}
   .log p{margin:0 0 5px} .log .beat{color:var(--accent);font-weight:600}
+  .log .beat::before{content:"";display:inline-block;width:13px;height:13px;margin-right:4px;vertical-align:-2px;
+    background:url('img/ui/seal.png') center/contain no-repeat;opacity:.85}
   .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
   .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
   .card.bonanca{border-top:3px solid var(--good)} .card.cotidiano{border-top:3px solid var(--info)} .card.crise{border-top:3px solid var(--bad)}
@@ -87,7 +107,7 @@
   .origem .spread span{font-size:10.5px;background:#00000030;border-radius:4px;padding:2px 5px;color:var(--muted-tx)} .origem .spread span b{color:var(--ink2)}
   .maprow{display:grid;grid-template-columns:1fr 240px;gap:16px}
   @media(max-width:820px){.maprow{grid-template-columns:1fr}}
-  #hexmap{width:100%;height:auto;background:#151310;border:1px solid var(--line);border-radius:10px}
+  #hexmap{width:100%;height:auto;background:#151310 url('img/ui/hexmap_bg.jpg') center/cover;border:1px solid var(--line);border-radius:10px}
   .legend .li{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink2);margin-bottom:5px}
   .legend .sw{width:18px;height:18px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#00000090;flex-shrink:0}
   .expbar{font-size:12px;color:var(--ink2);margin:10px 0}
@@ -145,7 +165,7 @@
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="crest" id="crest">♜</div>
+    <div class="crest" id="crest"></div>
     <div><h1 id="reinoNome">Reino</h1>
       <button class="ghost btnicon" id="btnRename">✎ renomear</button>
       <button class="ghost btnicon" id="btnNomeDado" title="nome aleatório">🎲</button>
@@ -154,6 +174,7 @@
     <div class="season-badge"><b id="estacaoLab">—</b><span id="anoLab">—</span></div>
     <button class="ghost btnicon" id="btnHardReset" title="apagar tudo e recomeçar">⟲ resetar tudo</button>
   </header>
+  <img class="divider" src="img/ui/divider.png" alt="">
 
   <!-- FUNDAÇÃO -->
   <div id="founding" class="panel" style="display:none">
@@ -670,7 +691,7 @@ function render(){
   document.getElementById("estacaoLab").textContent=ESTACOES[estacaoAtualIdx()][1];
   document.getElementById("anoLab").textContent="Ano "+anoAtual();
   document.getElementById("modo").value=S.modo;document.getElementById("dificuldade").value=S.dificuldade;
-  const medDefs=[["tesouro","Tesouro","tesouro"],["moral","Moral",""],["fama","Fama",""],["ameaca","Ameaça",""]];
+  const medDefs=[["tesouro","Tesouro","tesouro"],["moral","Moral",""],["fama","Fama","fama"],["ameaca","Ameaça",""]];
   document.getElementById("meters").innerHTML=medDefs.map(([k,lab,cls])=>{let vcls="";
     if(k==="moral")vcls=S.med.moral>=6?"good":(S.med.moral<=3?"bad":"");
     if(k==="ameaca")vcls=S.med.ameaca>=6?"bad":(S.med.ameaca<=2?"good":"");
