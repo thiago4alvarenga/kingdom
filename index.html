@@ -235,6 +235,9 @@
       </div>
     </div>
 
+    <div class="panel"><h2>Comércio <span class="sub">— provisões e serviços das propriedades com loja</span></h2>
+      <div id="comercio"></div></div>
+
     <div class="panel"><h2>Mapa <span class="sub">— o hexcrawl: onde os eventos se concretizam</span></h2>
       <div class="maprow">
         <div><svg id="hexmap" viewBox="0 0 480 420"></svg></div>
@@ -335,14 +338,14 @@ const ATIVOS=[
   {id:"fazendas",nome:"Fazendas",img:"fazendas.jpg",custo:20,mods:{economia:1,populacao:1}},
   {id:"taverna",nome:"Taverna",img:"taverna.jpg",custo:20,mods:{fama:1,economia:1},loja:"taverna"},
   {id:"forte",nome:"Forte",img:"forte.jpg",custo:40,mods:{militar:2,moral:1}},
-  {id:"quartel",nome:"Quartel",img:"quartel.jpg",custo:35,mods:{militar:2},recruta:{sugestao:"soldado / combatente treinado"}},
+  {id:"quartel",nome:"Quartel",img:"quartel.jpg",custo:35,mods:{militar:2},reqAttr:{militar:2},recruta:{sugestao:"soldado / combatente treinado"}},
   {id:"porto",nome:"Porto",img:"porto.jpg",custo:35,mods:{economia:1},instr:"embarcacao",instrTxt:"libera transporte por embarcação",reqAttr:{economia:4}},
   {id:"estabulo",nome:"Estábulos",img:"estabulo.jpg",custo:25,mods:{militar:1,populacao:1},instr:"montaria",instrTxt:"libera transporte montado",reqAttr:{populacao:3}},
   {id:"mina",nome:"Mineração",img:"mina.jpg",custo:30,mods:{economia:2}},
-  {id:"ferreiro",nome:"Ferreiro",img:"ferreiro.jpg",custo:25,mods:{militar:1,economia:1},loja:"ferreiro"},
+  {id:"ferreiro",nome:"Ferreiro",img:"ferreiro.jpg",custo:25,mods:{militar:1,economia:1},reqAttr:{militar:1},loja:"ferreiro"},
   {id:"cabana_cacador",nome:"Cabana do Caçador",img:"cabana_cacador.jpg",custo:22,mods:{militar:1},reqAttr:{populacao:2},recruta:{sugestao:"caçador / atirador"},loja:"cabana_cacador"},
-  {id:"guilda",nome:"Guilda",img:"guilda.jpg",custo:30,mods:{influencia:1,economia:1},instr:"cartografia",instrTxt:"mapas: menos risco de encontro",reqAttr:{economia:3},recruta:{sugestao:"explorador / batedor"}},
-  {id:"guilda_anoes",nome:"Guilda de Anões",img:"anoes.jpg",custo:40,mods:{economia:1,militar:1},cap:"mineracao",capTxt:"permite assentar montanhas",reqAttr:{economia:5},recruta:{sugestao:"minerador / engenheiro"}},
+  {id:"guilda",nome:"Guilda",img:"guilda.jpg",custo:30,mods:{influencia:1,economia:1},instr:"cartografia",instrTxt:"mapas: menos risco de encontro",reqAttr:{economia:3,influencia:1},recruta:{sugestao:"explorador / batedor"}},
+  {id:"guilda_anoes",nome:"Guilda de Anões",img:"anoes.jpg",custo:40,mods:{economia:1,militar:1},cap:"mineracao",capTxt:"permite assentar montanhas",reqAttr:{economia:5,militar:2},recruta:{sugestao:"minerador / engenheiro"}},
   {id:"herbalista",nome:"Herbalista",img:"herbalista.jpg",custo:22,mods:{populacao:1},instr:"remedios",instrTxt:"remédios: reduz risco de encontro",reqAttr:{populacao:3},recruta:{sugestao:"curandeiro / herbalista"}},
   {id:"templo",nome:"Templo",img:"templo.jpg",custo:25,mods:{influencia:1,moral:1},recruta:{sugestao:"monge / místico devoto"}},
   {id:"biblioteca",nome:"Biblioteca",img:"biblioteca.jpg",custo:28,mods:{influencia:1},reqAttr:{economia:4},recruta:{sugestao:"mago / estudioso arcano"}},
@@ -456,7 +459,7 @@ function getHex(q,r){return S.hexes.find(h=>h.q===q&&h.r===r);}
 function hexDist(a,b){return(Math.abs(a.q-b.q)+Math.abs(a.r-b.r)+Math.abs(a.q+a.r-b.q-b.r))/2;}
 function terrenoAleatorio(){const ks=Object.keys(TERRENOS).filter(k=>k!=="desconhecido");return ks[Math.floor(Math.random()*ks.length)];}
 const MAP_R0=4,MAX_R=9;
-function novoHex(q,r){return {q,r,terreno:terrenoAleatorio(),estado:"oculto",capital:false,constr:[],sitio:null,nota:"",encontro:""};}
+function novoHex(q,r){return {q,r,terreno:terrenoAleatorio(),estado:"oculto",capital:false,constr:[],sitio:null,nota:"",encontro:"",militarLocal:1};}
 function ensureHex(q,r){if(Math.max(Math.abs(q),Math.abs(r),Math.abs(q+r))>MAX_R)return getHex(q,r);let h=getHex(q,r);if(!h){h=novoHex(q,r);S.hexes.push(h);}return h;}
 function instrumentos(){const s=new Set();S.ativos.forEach(o=>{const a=ATIVOS.find(x=>x.id===o.id);if(a&&a.instr)s.add(a.instr);});return s;}
 function capacidades(){const s=new Set();S.ativos.forEach(o=>{const a=ATIVOS.find(x=>x.id===o.id);if(a&&a.cap)s.add(a.cap);});return s;}
@@ -495,7 +498,7 @@ function riscoMov(to,e){if(hexSeguro(to))return 0;let r=(RISCO_TERR[to.terreno]|
 function riscoLabel(r){return r<=0?"nenhum":r<0.8?"baixo":r<1.4?"médio":"alto";}
 function expNoHex(q,r){return S.expedicoes.find(e=>e.q===q&&e.r===r);}
 function reqTexto(req){if(!req)return"alcançar o hex";if(req.attr)return`${labelCurto(req.attr)} ${req.val}+`;if(req.instr)return`instrumento: ${req.instr}`;return"";}
-function reqMet(req){if(!req)return true;if(req.attr)return S.attr[req.attr]>=req.val;if(req.instr)return instrumentos().has(req.instr);return true;}
+function reqMet(req){if(!req)return true;if(req.attr)return attrTotal(req.attr)>=req.val;if(req.instr)return instrumentos().has(req.instr);return true;}
 
 function fundar(){
   if(bloqueadoLeitura())return;
@@ -579,6 +582,35 @@ function evoluirAssent(q,r){
   logClear();logBeat("Assentamento",`Evoluiu para ${NIVEIS_ASSENT[nv]} em ${TERRENOS[h.terreno].nome}. +Economia, +População.`);
   salvar();selHex=[q,r];render();
 }
+/* Militar local: defesa própria de cada assentamento (inclusive a capital), separada do
+   Militar do reino (S.attr.militar). Sobe gastando tesouro; estar conectado por estrada à
+   capital não soma poder direto, mas dá desconto no custo de evoluir (rota de suprimento). */
+function custoMilitarLocal(h){const base=15*(h.militarLocal||1);return hexSeguro(h)?Math.round(base*0.65):base;}
+function evoluirMilitarLocal(q,r){
+  if(bloqueadoLeitura())return;
+  const h=getHex(q,r);if(!h||h.estado!=="incorporado")return;
+  if((h.militarLocal||1)>=10){flashHint("Militar local já no máximo.");return;}
+  const custo=custoMilitarLocal(h);if(S.med.tesouro<custo){flashHint("Tesouro insuficiente ("+custo+").");return;}
+  S.med.tesouro-=custo;h.militarLocal=(h.militarLocal||1)+1;
+  logClear();logBeat("Defesa local",`Militar local de ${TERRENOS[h.terreno].nome}${h.capital?" (capital)":""} subiu para ${h.militarLocal}.${hexSeguro(h)?" (desconto por conexão à capital)":""}`);
+  salvar();selHex=[q,r];render();
+}
+/* Checagem periódica: cada assentamento incorporado defende a si mesmo. Se o Militar local
+   não segura a Ameaça do reino, um sítio de perigo surge ali mesmo (gancho de aventura) —
+   diferente da pressão agregada de sítios já existentes (pressaoAmeaca/eventoDeEstacao). */
+const DEFESA_LOCAL_CADA=7; // dias — checagem semanal por assentamento
+function checarDefesaAssentamentos(){
+  S.hexes.filter(h=>h.estado==="incorporado").forEach(h=>{
+    if(h.sitio)return;
+    const ml=h.militarLocal||1,am=medTotal("ameaca");
+    if(ml<am){
+      h.sitio={tipo:"ameaca",nome:"Incursão Local",
+        txt:`O Militar local (${ml}) não segura a Ameaça do reino (${am}) — perigo se instala em ${TERRENOS[h.terreno].nome}.`,
+        req:{attr:"militar",val:Math.max(2,am)},recomp:{ameaca:-1,tesouro:8}};
+      feedPush(`⚠ ${h.capital?"A capital":"Um assentamento"} em ${TERRENOS[h.terreno].nome} não segurou a Ameaça: um sítio de perigo surgiu ali.`);
+    }
+  });
+}
 
 /* ============ MOTOR ============ */
 function aplicar(efeito,esc=1){if(!efeito)return;
@@ -586,8 +618,17 @@ function aplicar(efeito,esc=1){if(!efeito)return;
     if(k==="tesouro"){if(v>0)v=Math.round(v*esc);S.med.tesouro=Math.max(0,S.med.tesouro+v);continue;}
     if(k in S.med){S.med[k]=clamp(S.med[k]+v,LIM_MED[k]);continue;}
     if(k in S.attr)S.attr[k]=clamp(S.attr[k]+v,LIM_ATTR);}}
+/* Bônus de propriedade (a.mods) só conta enquanto a propriedade tem mão de obra alocada —
+   não é somado de forma permanente em S.attr/S.med, e sim calculado ao vivo aqui e composto
+   no valor "total" (attrTotal/medTotal) usado em toda checagem e exibição. */
+function propBonus(key){let s=0;
+  S.ativos.forEach(o=>{if(!((o.trabalhadores||[]).length))return;
+    const a=ATIVOS.find(x=>x.id===o.id);if(a&&a.mods&&a.mods[key])s+=a.mods[key]*o.nivel;});
+  return s;}
+function attrTotal(k){return clamp(S.attr[k]+propBonus(k),LIM_ATTR);}
+function medTotal(k){return LIM_MED[k]?clamp(S.med[k]+propBonus(k),LIM_MED[k]):S.med[k];}
 function sortearBaralho(){const dif=DIFICULDADE[S.dificuldade];
-  const wBon=1+S.med.moral*0.6+S.attr.influencia*0.4,wCri=(1+S.med.ameaca*0.8)*dif.crisePeso,wCot=2.5;
+  const wBon=1+medTotal("moral")*0.6+attrTotal("influencia")*0.4,wCri=(1+medTotal("ameaca")*0.8)*dif.crisePeso,wCot=2.5;
   const total=wBon+wCri+wCot;let r=Math.random()*total;
   if((r-=wBon)<0)return"bonanca";if((r-=wCot)<0)return"cotidiano";return"crise";}
 function comprarCarta(b){const d=BARALHOS[b];return{...d[Math.floor(Math.random()*d.length)],baralho:b};}
@@ -596,7 +637,7 @@ function sitiosAmeaca(){return S.hexes.filter(h=>h.sitio&&h.sitio.tipo==="ameaca
    (assentamento conectado por estrada) fica contido enquanto Militar >= Ameaça.
    Sítios na terra selvagem sempre pressionam: só a agência da expedição os resolve. */
 function pressaoAmeaca(){return S.hexes.filter(h=>h.sitio&&h.sitio.tipo==="ameaca"&&
-  !(hexSeguro(h)&&S.attr.militar>=S.med.ameaca)).length;}
+  !(hexSeguro(h)&&attrTotal("militar")>=medTotal("ameaca"))).length;}
 
 /* ===== LOOP DIÁRIO ===== */
 const EVENTO_CADA=15; // dias entre eventos aleatórios
@@ -608,7 +649,7 @@ const EVENTOS_ESTACAO={
 };
 function estacaoAtualIdx(){return Math.floor(S.dias/S.diasPorEstacao)%4;}
 function anoAtual(){return Math.floor(S.dias/(S.diasPorEstacao*4))+1;}
-function dailyIncome(){return S.attr.economia*ESTACOES[estacaoAtualIdx()][2];}
+function dailyIncome(){return attrTotal("economia")*ESTACOES[estacaoAtualIdx()][2];}
 function feedPush(txt){S.feed=S.feed||[];S.feed.unshift({dia:S.dias,txt});if(S.feed.length>30)S.feed.pop();}
 const CRESCIMENTO_CADA=30; // dias entre tentativas de crescimento populacional
 function avancarDias(n){
@@ -620,14 +661,15 @@ function avancarDias(n){
     if(S.dias%EVENTO_CADA===0){dispararEvento();novidadeInfluencia();}
     if(S.dias%S.diasPorEstacao===0)eventoDeEstacao();
     if(S.dias%CRESCIMENTO_CADA===0)tentarCrescimentoPopulacao();
+    if(S.dias%DEFESA_LOCAL_CADA===0)checarDefesaAssentamentos();
   }
 }
 /* População cresce sozinha, devagar: nascimentos sempre; migração puxada por Influência e Moral. */
 function tentarCrescimentoPopulacao(){
   let chance=0.15,motivo="nascimentos na comunidade";
-  if(S.attr.influencia>=3&&S.med.moral>=6){chance+=0.25;motivo="migração atraída pela fama e boa vida do reino";}
-  else if(S.attr.influencia>=1){chance+=0.10;motivo="pequena leva de migrantes";}
-  if(S.med.moral<=2)chance-=0.10;
+  if(attrTotal("influencia")>=3&&medTotal("moral")>=6){chance+=0.25;motivo="migração atraída pela fama e boa vida do reino";}
+  else if(attrTotal("influencia")>=1){chance+=0.10;motivo="pequena leva de migrantes";}
+  if(medTotal("moral")<=2)chance-=0.10;
   chance=Math.max(0,Math.min(0.9,chance));
   if(Math.random()<chance){
     S.attr.populacao=clamp(S.attr.populacao+1,LIM_ATTR);
@@ -653,17 +695,17 @@ function eventoDeEstacao(){
   const est=estacaoAtualIdx();
   const pressao=pressaoAmeaca();
   if(pressao>0){aplicar({ameaca:pressao});feedPush(`${pressao} sítio(s) de ameaça fora de proteção pressionam: +${pressao} Ameaça.`);}
-  else if(sitiosAmeaca()>0)feedPush(`Militar ${S.attr.militar} ≥ Ameaça ${S.med.ameaca}: assentamentos seguros seguem protegidos.`);
+  else if(sitiosAmeaca()>0)feedPush(`Militar ${attrTotal("militar")} ≥ Ameaça ${medTotal("ameaca")}: assentamentos seguros seguem protegidos.`);
   let imTot=0;S.expedicoes.forEach(e=>{const hh=getHex(e.q,e.r);if(hexSeguro(hh)&&e.bolsa>0){const imp=Math.max(1,Math.round(e.bolsa*0.1));e.bolsa-=imp;S.med.tesouro+=imp;imTot+=imp;expLog(e,`Imposto/gastos: −${imp} à capital.`);}});
   if(imTot>0)feedPush(`Impostos e gastos deixaram +${imTot} de Recurso na capital.`);
   const se=EVENTOS_ESTACAO[ESTACOES[est][0]];if(se){aplicar(se.efeito,DIFICULDADE[S.dificuldade].recompensa);feedPush(`❄ ${ESTACOES[est][1]}: ${se.txt}`);}
 }
 /* Influência traz novidades: quanto mais conhecidos no reino maior, mais o mundo bate à porta. */
 function novidadeInfluencia(){
-  if(S.attr.influencia<=0)return;
-  if(Math.random()<S.attr.influencia*0.03){
+  if(attrTotal("influencia")<=0)return;
+  if(Math.random()<attrTotal("influencia")*0.03){
     aplicar({tesouro:10,fama:1});
-    feedPush(`Novidade do reino maior: com Influência ${S.attr.influencia}, notícias e visitantes chegam à capital (+10 Recurso, +1 Fama).`);
+    feedPush(`Novidade do reino maior: com Influência ${attrTotal("influencia")}, notícias e visitantes chegam à capital (+10 Recurso, +1 Fama).`);
   }
 }
 function passarDias(n){if(bloqueadoLeitura())return;avancarDias(n);salvar();render();}
@@ -675,17 +717,20 @@ function decidir(id,idx){if(bloqueadoLeitura())return;const c=S.pendentes.find(x
   c._escolhido=op.label;S.pendentes=S.pendentes.filter(x=>x.id!==id);salvar();render();
   const el=document.querySelector(`[data-card="${id}"] .opts`);if(el)el.outerHTML=`<div class="resolved">✓ ${op.label}</div>`;}
 function comprarAtivo(id){if(bloqueadoLeitura())return;const a=ATIVOS.find(x=>x.id===id);if(!a)return;
-  if(a.reqAttr){for(const [k,v] of Object.entries(a.reqAttr))if(S.attr[k]<v){flashHint(`Requer ${labelCurto(k)} ${v}+ para ${a.nome}.`);return;}}
+  if(a.reqAttr){for(const [k,v] of Object.entries(a.reqAttr))if(attrTotal(k)<v){flashHint(`Requer ${labelCurto(k)} ${v}+ para ${a.nome}.`);return;}}
   if(S.med.tesouro<a.custo){flashHint("Tesouro insuficiente.");return;}
-  S.med.tesouro-=a.custo;aplicar(a.mods);S.ativos.push({uid:uid(),id:a.id,nivel:1});
+  // Bônus (a.mods) não é somado de forma permanente: só conta enquanto a propriedade tem
+  // mão de obra alocada (ver propBonus/attrTotal/medTotal). Aloque população pra ativar.
+  S.med.tesouro-=a.custo;S.ativos.push({uid:uid(),id:a.id,nivel:1});
   const cap=getHex(0,0);if(cap)cap.constr.push(a.id);salvar();render();}
 
 /* ============ RENDER ============ */
 /* Território é derivado: quantos hexes o reino assentou de fato — não se compra. */
 function territorioAtual(){return S.hexes.filter(h=>h.estado==="incorporado").length;}
-function escalaAtual(){const idx=clamp(Math.floor((territorioAtual()+S.attr.populacao)/2),[1,10])-1;return ESCALAS[Math.max(0,Math.min(9,idx))];}
-function climaTexto(){let t=S.med.moral>=6&&S.med.ameaca<=3?"tende à <b>Bonança</b>":S.med.ameaca>=6?"tende à <b>Crise</b>":"está <b>equilibrado</b>";
-  return `Clima da próxima estação ${t} — Moral ${S.med.moral}, Ameaça ${S.med.ameaca}.`;}
+function escalaAtual(){const idx=clamp(Math.floor((territorioAtual()+attrTotal("populacao"))/2),[1,10])-1;return ESCALAS[Math.max(0,Math.min(9,idx))];}
+function climaTexto(){const moral=medTotal("moral"),ameaca=medTotal("ameaca");
+  let t=moral>=6&&ameaca<=3?"tende à <b>Bonança</b>":ameaca>=6?"tende à <b>Crise</b>":"está <b>equilibrado</b>";
+  return `Clima da próxima estação ${t} — Moral ${moral}, Ameaça ${ameaca}.`;}
 function render(){
   document.getElementById("reinoNome").textContent=S.nome;
   document.getElementById("founding").style.display=S.fundado?"none":"block";
@@ -699,21 +744,26 @@ function render(){
   document.getElementById("modo").value=S.modo;document.getElementById("dificuldade").value=S.dificuldade;
   const medDefs=[["tesouro","Tesouro","tesouro"],["moral","Moral",""],["fama","Fama","fama"],["ameaca","Ameaça",""]];
   document.getElementById("meters").innerHTML=medDefs.map(([k,lab,cls])=>{let vcls="";
-    if(k==="moral")vcls=S.med.moral>=6?"good":(S.med.moral<=3?"bad":"");
-    if(k==="ameaca")vcls=S.med.ameaca>=6?"bad":(S.med.ameaca<=2?"good":"");
-    return `<div class="meter ${cls}"><div class="k">${lab}</div><div class="v ${vcls}">${k==="tesouro"?Math.round(S.med[k]):S.med[k]}</div></div>`;}).join("");
+    const vTot=medTotal(k),vBase=S.med[k],bon=Math.round((vTot-vBase)*100)/100;
+    if(k==="moral")vcls=vTot>=6?"good":(vTot<=3?"bad":"");
+    if(k==="ameaca")vcls=vTot>=6?"bad":(vTot<=2?"good":"");
+    const val=k==="tesouro"?Math.round(vBase):vTot;
+    const bonTxt=bon>0?` <span style="color:var(--good);font-weight:400;font-size:11px">(+${bon} propriedades)</span>`:"";
+    return `<div class="meter ${cls}"><div class="k">${lab}</div><div class="v ${vcls}">${val}${bonTxt}</div></div>`;}).join("");
   document.getElementById("clima").innerHTML=climaTexto();
   document.getElementById("attrs").innerHTML=ATRIBUTOS.map(([k,lab])=>{
     const extra=k==="populacao"?` <span style="color:var(--muted-tx);font-weight:400">(livre: ${populacaoLivre()})</span>`:"";
     const mestreBtns=(k==="populacao"&&papel==="mestre")?`<span style="margin-left:6px"><button class="ghost" style="padding:0 6px;font-size:12px" onclick="ajustarPopulacaoManual(-1)">−</button><button class="ghost" style="padding:0 6px;font-size:12px" onclick="ajustarPopulacaoManual(1)">+</button></span>`:"";
-    return `<div class="attr"><div class="lab"><b>${lab}</b>${extra}<span>${S.attr[k]}${mestreBtns}</span></div>
-     <div class="bar"><i style="width:${S.attr[k]*10}%"></i></div><div class="eff">${EFEITO_ATTR[k]}</div></div>`;}).join("")
+    const vTot=attrTotal(k),bon=vTot-S.attr[k];
+    const bonTxt=bon>0?` <span style="color:var(--good);font-weight:400;font-size:11px">(${S.attr[k]}+${bon})</span>`:"";
+    return `<div class="attr"><div class="lab"><b>${lab}</b>${extra}<span>${vTot}${bonTxt}${mestreBtns}</span></div>
+     <div class="bar"><i style="width:${vTot*10}%"></i></div><div class="eff">${EFEITO_ATTR[k]}</div></div>`;}).join("")
     +`<div class="attr" style="opacity:.85"><div class="lab"><b>Território</b><span>${territorioAtual()} hex(es)</span></div>
      <div class="eff">derivado — nº de assentamentos incorporados, não se compra</div></div>`;
   const instr=instrumentos();
   document.getElementById("shop").innerHTML=ATIVOS.map(a=>{
     const mods=Object.entries(a.mods).map(([k,v])=>`${labelCurto(k)} ${v>0?"+":""}${v}`).join(" · ");
-    const reqOk=!a.reqAttr||Object.entries(a.reqAttr).every(([k,v])=>S.attr[k]>=v);
+    const reqOk=!a.reqAttr||Object.entries(a.reqAttr).every(([k,v])=>attrTotal(k)>=v);
     const pode=S.med.tesouro>=a.custo&&reqOk;const temInstr=a.instr&&instr.has(a.instr);
     const reqTxt=a.reqAttr?Object.entries(a.reqAttr).map(([k,v])=>`${labelCurto(k)} ${v}+`).join(", "):"";
     return `<div class="asset"><div class="imgslot"><span class="ph">img/assets/${a.img}</span>
@@ -725,7 +775,7 @@ function render(){
       <button class="buy" ${pode?"":"disabled"} onclick="comprarAtivo('${a.id}')">Comprar · ${a.custo}</button></div></div>`;}).join("");
   document.getElementById("btnAvancar").disabled=false;
   renderStage(S.eventos||[]);renderFeed();
-  renderMapa();renderLegend();renderExpBar();renderExpInfo();renderChars();renderExpes();renderPropriedades();renderTempo();renderSync();refreshStageHint();
+  renderMapa();renderLegend();renderExpBar();renderExpInfo();renderChars();renderExpes();renderPropriedades();renderComercio();renderTempo();renderSync();refreshStageHint();
 }
 function renderTempo(){const d=document.getElementById("diaLab");if(d)d.textContent=diaMaisAvancado();
   const pe=document.getElementById("diasPE");if(pe&&document.activeElement!==pe)pe.value=S.diasPorEstacao;}
@@ -803,7 +853,8 @@ function renderExpInfo(){
     return;}
   let s=`<b>${TERRENOS[h.terreno].nome}</b>${h.capital?" · capital ★":" · "+estadoLabel(h.estado)}`;
   if(h.constr.length)s+=`<br>Construções: ${h.constr.map(id=>{const a=ATIVOS.find(x=>x.id===id);return a?a.nome:id;}).join(", ")}`;
-  if(h.estado==="incorporado")s+=`<br>Assentamento: <b>${NIVEIS_ASSENT[(h.nivelAssent||1)-1]}</b> · ${hexSeguro(h)?'<span style="color:var(--good)">conectado à capital</span>':'<span style="color:var(--warn)">isolado — risco de encontro</span>'}`;
+  if(h.estado==="incorporado")s+=`<br>Assentamento: <b>${NIVEIS_ASSENT[(h.nivelAssent||1)-1]}</b> · ${hexSeguro(h)?'<span style="color:var(--good)">conectado à capital</span>':'<span style="color:var(--warn)">isolado — risco de encontro</span>'}`
+    +`<br>Militar local: <b>${h.militarLocal||1}</b> ${(h.militarLocal||1)<medTotal("ameaca")?'<span style="color:var(--warn)">(abaixo da Ameaça do reino)</span>':'<span style="color:var(--good)">(segura a Ameaça do reino)</span>'}`;
   const aqui=expNoHex(h.q,h.r);
   if(aqui)s+=`<br><span style="color:var(--accent)">◉ ${esc(aqui.nome)} está aqui</span>`;
   if(h.sitio)s+=`<br><span class="req">${h.sitio.tipo==="ameaca"?"⚠":"✦"} ${h.sitio.nome}:</span> ${h.sitio.txt}${h.sitio.req?` <br>Dica: ${reqTexto(h.sitio.req)} ajuda aqui (não é obrigatório — quem resolve é a expedição).`:""} Recompensa: ${fmtEfeito(h.sitio.recomp,true)}`;
@@ -822,7 +873,8 @@ function renderExpInfo(){
   }
   // assentar / evoluir
   if(h.estado==="explorado"&&!h.sitio){const p=podeIncorporar(h);btns+=p.ok?`<button onclick="expIncorporar(${h.q},${h.r})">Assentar arraial · ${p.custo}${p.adj?" (c/ estrada)":""}</button>`:`<span class="req">Não assentável: ${p.motivo}.</span>`;}
-  if(h.estado==="incorporado"){const nv=h.nivelAssent||1;if(nv<NIVEIS_ASSENT.length)btns+=`<button onclick="evoluirAssent(${h.q},${h.r})">Evoluir p/ ${NIVEIS_ASSENT[nv]} · ${40*nv}</button>`;}
+  if(h.estado==="incorporado"){const nv=h.nivelAssent||1;if(nv<NIVEIS_ASSENT.length)btns+=`<button onclick="evoluirAssent(${h.q},${h.r})">Evoluir p/ ${NIVEIS_ASSENT[nv]} · ${40*nv}</button>`;
+    if((h.militarLocal||1)<10)btns+=`<button class="ghost" onclick="evoluirMilitarLocal(${h.q},${h.r})">⚔ Reforçar defesa local · ${custoMilitarLocal(h)}</button>`;}
   let spoiler="";
   if(h.nota||h.encontro)spoiler=`<div style="margin-top:8px"><button class="ghost" style="font-size:12px;padding:4px 8px" onclick="var d=this.nextElementSibling;d.style.display=d.style.display==='none'?'block':'none';">⚠ nota do mestre (spoiler)</button><div style="display:none;margin-top:6px;font-size:12px;color:var(--ink2);background:#00000025;border-radius:6px;padding:8px">${h.nota?'<b>Descrição:</b> '+esc(h.nota)+'<br>':''}${h.encontro?'<b>Encontro:</b> '+esc(h.encontro):''}</div></div>`;
   box.innerHTML=s+(btns?`<div>${btns}</div>`:"")+spoiler;
@@ -910,7 +962,7 @@ function addCharAleatorio(sugestao){
   if(S.personagens.length>=aventureirosMax()){flashHint("Sem aventureiros disponíveis — aumente População ou construa propriedades.");return;}
   S.personagens.push({id:uid(),nome:pick(NOMES_PESSOA),rank:"",info:sugestao||pick(INFO_PESSOA),recursos:0,vida:10,vidaMax:10,funcao:"",notas:"",tags:pick(TAGS_PESSOA),expedicaoId:null});salvar();render();}
 function propsComRecruta(){const m=new Map();S.ativos.forEach(o=>{const a=ATIVOS.find(x=>x.id===o.id);if(a&&a.recruta&&!m.has(a.id))m.set(a.id,a);});return[...m.values()];}
-function aventureirosMax(){let n=2+Math.floor(S.attr.populacao/2);S.ativos.forEach(o=>{const a=ATIVOS.find(x=>x.id===o.id);if(a&&a.recruta)n+=1;});return n;}
+function aventureirosMax(){let n=2+Math.floor(attrTotal("populacao")/2);S.ativos.forEach(o=>{const a=ATIVOS.find(x=>x.id===o.id);if(a&&a.recruta)n+=1;});return n;}
 
 /* ===== MÃO DE OBRA =====
    Alocar 1 população a uma propriedade não é "1 pessoa" — representa uma família/agregado
@@ -920,7 +972,7 @@ function aventureirosMax(){let n=2+Math.floor(S.attr.populacao/2);S.ativos.forEa
 const DIAS_POR_NIVEL=20;
 const TIERS_RECRUTA=["iniciante","experiente","veterano","lendário"];
 function populacaoAlocada(){let n=0;S.ativos.forEach(o=>n+=(o.trabalhadores||[]).length);return n;}
-function populacaoLivre(){return Math.max(0,S.attr.populacao-populacaoAlocada());}
+function populacaoLivre(){return Math.max(0,attrTotal("populacao")-populacaoAlocada());}
 function vagasProp(o){return o.nivel+1;}
 function alocarTrabalhador(propUid){
   if(bloqueadoLeitura())return;
@@ -961,8 +1013,10 @@ function formarAventureiro(propUid,workerId){
 }
 function evoluirPropriedade(u){if(bloqueadoLeitura())return;const o=S.ativos.find(x=>x.uid===u);if(!o)return;const a=ATIVOS.find(x=>x.id===o.id);if(!a)return;
   const custo=30*o.nivel;if(S.med.tesouro<custo){flashHint("Tesouro insuficiente ("+custo+").");return;}
-  S.med.tesouro-=custo;o.nivel++;aplicar(a.mods);
-  logClear();logBeat("Propriedade",`${a.nome} evoluiu para nível ${o.nivel}. Bônus reaplicado.`);salvar();render();}
+  S.med.tesouro-=custo;o.nivel++;
+  // Nível maior escala o bônus (a.mods × nível) só enquanto a propriedade estiver com
+  // mão de obra alocada — ver propBonus(). Nada é somado de forma permanente aqui.
+  logClear();logBeat("Propriedade",`${a.nome} evoluiu para nível ${o.nivel}. Bônus escala com o nível (ativo enquanto houver mão de obra alocada).`);salvar();render();}
 function destinoOpts(){
   let out=`<option value="">Reino (dia a dia)</option>`;
   if(S.expedicoes.length)out+=`<optgroup label="Expedições">`+S.expedicoes.map(e=>`<option value="exp:${e.id}">${esc(e.nome)}</option>`).join("")+`</optgroup>`;
@@ -986,6 +1040,12 @@ function renderLojaHTML(o,a){
     ${papel==="mestre"?`<button class="ghost" style="font-size:11px;padding:3px 8px;margin-top:6px" onclick="lojaAddItem('${o.uid}')">+ item (mestre)</button>`:""}
   </div>`;
 }
+function renderComercio(){const box=document.getElementById("comercio");if(!box)return;
+  const comLoja=S.ativos.filter(o=>{const a=ATIVOS.find(x=>x.id===o.id);return a&&a.loja;});
+  if(!comLoja.length){box.innerHTML=`<span class="hint" style="margin:0">Nenhuma propriedade com loja ainda (Taverna, Ferreiro, Cabana do Caçador...).</span>`;return;}
+  box.innerHTML=comLoja.map(o=>{const a=ATIVOS.find(x=>x.id===o.id);
+    return `<div class="prop" style="display:block"><div class="pn" style="margin-bottom:6px">${a.nome} <span class="pnv">Nível ${o.nivel}</span></div>
+      ${renderLojaHTML(o,a)}</div>`;}).join("");}
 function renderMaoDeObra(o,a){
   const vagas=vagasProp(o),trabs=o.trabalhadores||[];
   const linhas=trabs.map(t=>{
@@ -1011,13 +1071,16 @@ function renderMaoDeObra(o,a){
 function renderPropriedades(){const box=document.getElementById("props");if(!box)return;
   if(!S.ativos.length){box.innerHTML=`<span class="hint" style="margin:0">Nenhuma propriedade ainda. Compre na loja acima; elas aparecem aqui e podem evoluir.</span>`;return;}
   box.innerHTML=S.ativos.map(o=>{const a=ATIVOS.find(x=>x.id===o.id);if(!a)return"";
-    const mods=Object.entries(a.mods).map(([k,v])=>`${labelCurto(k)} +${v}`).join(" · ");
+    const ativo=(o.trabalhadores||[]).length>0;
+    const mods=Object.entries(a.mods).map(([k,v])=>`${labelCurto(k)} +${v*o.nivel}`).join(" · ");
+    const modsHtml=`<span style="${ativo?"":"opacity:.45;text-decoration:line-through"}">${mods}</span>`+
+      (ativo?"":' <span style="color:var(--warn)">— inativo, aloque população pra ativar</span>');
     return `<div class="prop"><div class="pimg"><span class="ph">img/assets/${a.img}</span><img src="img/assets/${a.img}" onerror="this.remove()"></div>
       <div class="pb"><div class="pn">${a.nome} <span class="pnv">Nível ${o.nivel}</span></div>
-      <div class="pm">${mods}${a.instr?" · ⚑ "+a.instrTxt:""}${a.cap?" · ⚒ "+a.capTxt:""}${a.recruta?" · ♟ treina: "+a.recruta.sugestao:""}</div>
+      <div class="pm">${modsHtml}${a.instr?" · ⚑ "+a.instrTxt:""}${a.cap?" · ⚒ "+a.capTxt:""}${a.recruta?" · ♟ treina: "+a.recruta.sugestao:""}</div>
       <button class="buy" onclick="evoluirPropriedade('${o.uid}')">Evoluir · ${30*o.nivel}</button>
       ${renderMaoDeObra(o,a)}
-      ${a.loja?renderLojaHTML(o,a):""}</div></div>`;}).join("");}
+      ${a.loja?`<div class="hint" style="margin:6px 0 0">🛒 loja disponível na aba Comércio</div>`:""}</div></div>`;}).join("");}
 function setChar(id,campo,val){if(bloqueadoLeitura())return;const c=S.personagens.find(x=>x.id===id);if(!c)return;c[campo]=(campo==="expedicaoId"&&!val)?null:val;salvar();if(campo==="expedicaoId")render();}
 /* Troca de expedição é sempre agência do personagem: só sai de uma expedição em campo se
    estiver numa cidade/assentamento (incorporado) ou se topar com a nova expedição no mesmo
