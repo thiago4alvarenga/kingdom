@@ -21,8 +21,12 @@ Crise: `fome`, `desastre`, `bandidos`, `revolta`, `praga_lavoura`, `incendio`
 
 ## IDs dos ativos — `img/assets/<id>.jpg`
 
-`fazendas`, `taverna`, `forte`, `quartel`, `porto`, `estabulo`, `mina`, `ferreiro`, `cabana_cacador`, `guilda`, `guilda_anoes`, `herbalista`, `templo`, `biblioteca`, `hospital`, `torre_mago`, `posto_avancado`
-(todos já preenchidos)
+`fazendas`, `taverna`, `forte`, `quartel`, `porto`, `estabulo`, `mina`, `ferreiro`, `cabana_cacador`, `guilda`, `guilda_anoes`, `herbalista`, `templo`, `biblioteca`, `hospital`, `torre_mago`, `armazem`
+(todos preenchidos exceto `armazem`, novo — 2026-07-31)
+
+(nota 2026-07-31: `posto_avancado` deixou de ser propriedade da capital — virou um marco no
+hexcrawl, sem arte própria em `img/assets/` por enquanto; a imagem antiga `posto_avancado.jpg`
+ficou sem uso.)
 
 ## Dica
 
