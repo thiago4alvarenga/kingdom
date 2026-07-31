@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kingdom — Reino</title>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="16x16" href="img/ui/favicon_16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="img/ui/favicon_32.png">
+<link rel="icon" type="image/png" sizes="48x48" href="img/ui/favicon_48.png">
+<link rel="apple-touch-icon" sizes="180x180" href="img/ui/favicon_180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&display=swap">
 <style>
@@ -12,6 +17,29 @@
     --ink:#efe7d8;--ink2:#c7bca6;--muted-tx:#9a9080;
     --accent:#c9a24b;--good:#4fae7f;--bad:#bb5566;--warn:#c98a3f;--info:#5f8fc4;--radius:12px;
     --font-display:'Cinzel',serif;
+    --hex-ink:#efe7d8; /* texto sobre hexágonos coloridos no mapa — fixo, não troca com o tema */
+  }
+  /* Tema claro: mesma estrutura visual (pergaminho, cantos ornamentados), tons invertidos.
+     Pedido do Thiago porque o hexmap ficava difícil de ler no escuro. */
+  body.light{
+    --bg:#ece1c8;--panel:#f6ecd4;--panel2:#fbf4e3;--line:#cdb98f;
+    --ink:#2b2313;--ink2:#4d4128;--muted-tx:#7a6c4c;
+    --accent:#8a5a1e;--good:#2f7a4f;--bad:#a13c2f;--warn:#9c6a1e;--info:#2f5f8a;
+    background-image:linear-gradient(rgba(250,244,228,.55),rgba(250,244,228,.55)),url('img/ui/parchment.jpg');
+  }
+  body.light header.top{
+    background-image:
+      url('img/ui/corner_tl.png'),url('img/ui/corner_tr.png'),
+      url('img/ui/corner_bl.png'),url('img/ui/corner_br.png'),
+      linear-gradient(rgba(246,236,212,.94),rgba(246,236,212,.94)),url('img/ui/parchment.jpg');
+  }
+  body.light .panel{
+    background-image:linear-gradient(rgba(246,236,212,.92),rgba(246,236,212,.92)),url('img/ui/parchment.jpg');
+  }
+  body.light .meter.tesouro{background:#f1e3ba;border-color:#c9a24b}
+  body.light #hexmap{
+    background-image:linear-gradient(rgba(237,227,199,.42),rgba(237,227,199,.42)),url('img/ui/hexmap_bg.jpg');
+    background-color:#d9c99c;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
@@ -123,7 +151,7 @@
   polygon.hex{cursor:pointer;transition:opacity .12s} polygon.hex:hover{opacity:.82}
   polygon.hex.sel{stroke:#efe7d8;stroke-width:3}
   text.hexsym{pointer-events:none;font-size:16px;fill:#00000080}
-  text.hexbadge{pointer-events:none;font-size:12px;fill:var(--ink)}
+  text.hexbadge{pointer-events:none;font-size:12px;fill:var(--hex-ink)}
   .ctab{width:100%;border-collapse:collapse;font-size:12.5px;min-width:560px}
   .ctab th{text-align:left;color:var(--muted-tx);font-weight:500;padding:4px 6px;font-size:11px}
   .ctab td{padding:3px 4px;border-top:1px solid var(--line)}
@@ -178,6 +206,7 @@
       <div class="tag" id="escalaLab">Escala: —</div></div>
     <div class="spacer"></div>
     <div class="season-badge"><b id="estacaoLab">—</b><span id="anoLab">—</span></div>
+    <button class="ghost btnicon" id="btnTema" title="alternar tema claro/escuro">🌙 Escuro</button>
     <button class="ghost btnicon" id="btnHardReset" title="apagar tudo e recomeçar">⟲ resetar tudo</button>
   </header>
   <img class="divider" src="img/ui/divider.png" alt="">
@@ -448,6 +477,13 @@ function esc(s){return(s||"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").repla
 function getExp(id){return S.expedicoes.find(x=>x.id===id);}
 let S=carregar()||estadoInicial();
 let selOrigem=null,selHex=null,expAtiva=null,modoMestre=false;
+/* Tema é preferência de tela, não do reino — fica fora de S, salvo à parte. */
+let TEMA=(function(){try{return localStorage.getItem("kingdom_theme")||"dark";}catch(e){return "dark";}})();
+function aplicarTema(){
+  document.body.classList.toggle("light",TEMA==="light");
+  const b=document.getElementById("btnTema");if(b)b.textContent=TEMA==="light"?"☀ Claro":"🌙 Escuro";
+}
+function alternarTema(){TEMA=TEMA==="light"?"dark":"light";try{localStorage.setItem("kingdom_theme",TEMA);}catch(e){}aplicarTema();renderMapa();}
 const LIM_ATTR=[0,10],LIM_MED={moral:[0,10],fama:[0,10],ameaca:[0,10]};
 const clamp=(v,[a,b])=>Math.max(a,Math.min(b,v));
 
@@ -483,6 +519,49 @@ const TRANSP_MULT={"a pé":1,"montado":0.6,"embarcação":0.5};
 const RITMO_DIAS={"cauteloso":1.4,"normal":1,"forçado":0.7};
 const RITMO_RISCO={"cauteloso":0.6,"normal":1,"forçado":1.6};
 const RISCO_TERR={campo:0.5,estepe:0.6,costa:0.8,floresta:1.1,montanha:1.2,pantano:1.4,desconhecido:1};
+
+/* ============ CLIMA DO DIA (por hex) ============
+   Cada hex "ativo" (onde há expedição, ou assentamento) tem um clima do dia, sorteado por
+   estação + terreno e guardado no próprio hex (h.climaDia/h.climaTipo) — só recalcula quando
+   o dia do reino muda, então é estável dentro do mesmo dia e barato de checar toda hora.
+   Reaproveita os 4 ícones de clima já gerados (sol/outono/inverno/chuva) como os 4 tipos. */
+const WEATHER_TIPOS={
+  claro:{nome:"Céu claro",icon:"weather_sun.png",movMult:1,riscoMult:1},
+  chuva:{nome:"Chuva",icon:"weather_rain.png",movMult:1.15,riscoMult:1.15},
+  vento:{nome:"Vento forte",icon:"weather_autumn.png",movMult:1.1,riscoMult:1.1},
+  frio:{nome:"Frio cortante",icon:"weather_winter.png",movMult:1.3,riscoMult:1.2}
+};
+const WEATHER_ESTACAO_PESO={
+  primavera:{claro:3,chuva:4,vento:2,frio:1},
+  verao:{claro:6,chuva:2,vento:2,frio:0},
+  outono:{claro:2,chuva:3,vento:4,frio:1},
+  inverno:{claro:2,chuva:1,vento:2,frio:5}
+};
+const WEATHER_TERRENO_PESO={
+  montanha:{frio:2,vento:1},pantano:{chuva:2},costa:{chuva:1,vento:1},
+  estepe:{vento:1,claro:1},campo:{claro:1},floresta:{chuva:1}
+};
+function pesoClima(estIdx,terreno){
+  const base={...WEATHER_ESTACAO_PESO[ESTACOES[estIdx][0]]};
+  const nudge=WEATHER_TERRENO_PESO[terreno]||{};
+  Object.keys(nudge).forEach(k=>{base[k]=(base[k]||0)+nudge[k];});
+  return base;
+}
+function sortearClima(estIdx,terreno){
+  const pesos=pesoClima(estIdx,terreno);
+  const entries=Object.entries(pesos).filter(([,w])=>w>0);
+  const total=entries.reduce((s,[,w])=>s+w,0);
+  let r=Math.random()*total;
+  for(const [k,w] of entries){r-=w;if(r<=0)return k;}
+  return entries[0][0];
+}
+function climaHex(h){
+  if(!h)return null;
+  if(h.climaDia!==S.dias){h.climaTipo=sortearClima(estacaoAtualIdx(),h.terreno);h.climaDia=S.dias;}
+  return{tipo:h.climaTipo,...WEATHER_TIPOS[h.climaTipo]};
+}
+function climaIconHTML(c){return c?`<img src="img/ui/${c.icon}" alt="" style="width:15px;height:15px;vertical-align:-3px;object-fit:contain;opacity:.9">`:"";}
+
 function transpEfetivo(e,terreno){let m=e.transporte,I=instrumentos();
   if(m==="montado"&&!I.has("montaria"))m="a pé";
   if(m==="embarcação"&&!I.has("embarcacao"))m="a pé";
@@ -492,9 +571,10 @@ function transpEfetivo(e,terreno){let m=e.transporte,I=instrumentos();
 function custoMov(from,to,e){
   if(from.estado==="incorporado"&&to.estado==="incorporado")return{dias:1,transp:"estrada"};
   const t=transpEfetivo(e,to.terreno);
-  const d=(MOV_TERR[to.terreno]||2)*TRANSP_MULT[t]*(RITMO_DIAS[e.ritmo]||1);
+  const clima=climaHex(to);
+  const d=(MOV_TERR[to.terreno]||2)*TRANSP_MULT[t]*(RITMO_DIAS[e.ritmo]||1)*(clima?clima.movMult:1);
   return{dias:Math.max(1,Math.round(d)),transp:t};}
-function riscoMov(to,e){if(hexSeguro(to))return 0;let r=(RISCO_TERR[to.terreno]||1)*(RITMO_RISCO[e.ritmo]||1);const I=instrumentos();if(I.has("cartografia"))r*=0.8;if(I.has("remedios"))r*=0.6;return r;}
+function riscoMov(to,e){if(hexSeguro(to))return 0;let r=(RISCO_TERR[to.terreno]||1)*(RITMO_RISCO[e.ritmo]||1);const clima=climaHex(to);if(clima)r*=clima.riscoMult;const I=instrumentos();if(I.has("cartografia"))r*=0.8;if(I.has("remedios"))r*=0.6;return r;}
 function riscoLabel(r){return r<=0?"nenhum":r<0.8?"baixo":r<1.4?"médio":"alto";}
 function expNoHex(q,r){return S.expedicoes.find(e=>e.q===q&&e.r===r);}
 function reqTexto(req){if(!req)return"alcançar o hex";if(req.attr)return`${labelCurto(req.attr)} ${req.val}+`;if(req.instr)return`instrumento: ${req.instr}`;return"";}
@@ -662,7 +742,18 @@ function avancarDias(n){
     if(S.dias%S.diasPorEstacao===0)eventoDeEstacao();
     if(S.dias%CRESCIMENTO_CADA===0)tentarCrescimentoPopulacao();
     if(S.dias%DEFESA_LOCAL_CADA===0)checarDefesaAssentamentos();
+    checarClimaAssentamentos();
   }
+}
+/* Clima é diário de verdade (não tem "CADA"): só narrativo por enquanto, sem mexer em
+   números do reino — frio/chuva têm uma chance pequena de virar uma linha no registro. */
+function checarClimaAssentamentos(){
+  S.hexes.filter(h=>h.estado==="incorporado").forEach(h=>{
+    const c=climaHex(h);
+    if((c.tipo==="frio"||c.tipo==="chuva")&&Math.random()<0.06){
+      feedPush(`${c.nome} em ${TERRENOS[h.terreno].nome}${h.capital?" (capital)":""} — o povo sente o tempo, mas o trabalho segue.`);
+    }
+  });
 }
 /* População cresce sozinha, devagar: nascimentos sempre; migração puxada por Influência e Moral. */
 function tentarCrescimentoPopulacao(){
@@ -852,6 +943,8 @@ function renderExpInfo(){
     if(ativa&&hexDist(getHex(ativa.q,ativa.r),h)===1)box.innerHTML=t+` <br><span class="req">(não se viaja direto ao oculto)</span>`;
     return;}
   let s=`<b>${TERRENOS[h.terreno].nome}</b>${h.capital?" · capital ★":" · "+estadoLabel(h.estado)}`;
+  const climaAqui=climaHex(h);
+  s+=` · ${climaIconHTML(climaAqui)} ${climaAqui.nome}`;
   if(h.constr.length)s+=`<br>Construções: ${h.constr.map(id=>{const a=ATIVOS.find(x=>x.id===id);return a?a.nome:id;}).join(", ")}`;
   if(h.estado==="incorporado")s+=`<br>Assentamento: <b>${NIVEIS_ASSENT[(h.nivelAssent||1)-1]}</b> · ${hexSeguro(h)?'<span style="color:var(--good)">conectado à capital</span>':'<span style="color:var(--warn)">isolado — risco de encontro</span>'}`
     +`<br>Militar local: <b>${h.militarLocal||1}</b> ${(h.militarLocal||1)<medTotal("ameaca")?'<span style="color:var(--warn)">(abaixo da Ameaça do reino)</span>':'<span style="color:var(--good)">(segura a Ameaça do reino)</span>'}`;
@@ -881,7 +974,8 @@ function renderExpInfo(){
 }
 function estadoLabel(e){return{conhecido:"conhecido",explorado:"explorado",incorporado:"incorporado"}[e]||e;}
 function gmHexPanel(h){
-  let s=`<b>${TERRENOS[h.terreno].nome}</b> (${h.q},${h.r}) · ${estadoLabel(h.estado)}${h.capital?" · capital ★":""}`;
+  const climaAqui=climaHex(h);
+  let s=`<b>${TERRENOS[h.terreno].nome}</b> (${h.q},${h.r}) · ${estadoLabel(h.estado)}${h.capital?" · capital ★":""} · ${climaIconHTML(climaAqui)} ${climaAqui.nome}`;
   if(h.sitio)s+=`<br>Sítio de carta: ${h.sitio.nome} (${h.sitio.tipo})`;
   s+=`<label class="gml">Descrição do hex (spoiler p/ jogadores)</label><textarea class="gmt" onchange="setHexCampo(${h.q},${h.r},'nota',this.value)">${esc(h.nota||"")}</textarea>`;
   s+=`<label class="gml">Encontro / segredo (oculto aos jogadores)</label><textarea class="gmt" onchange="setHexCampo(${h.q},${h.r},'encontro',this.value)">${esc(h.encontro||"")}</textarea>`;
@@ -945,7 +1039,9 @@ function renderSync(){const s=document.getElementById("syncStatus");if(!s)return
 
 /* ============ PERSONAGENS ============ */
 function addChar(){if(bloqueadoLeitura())return;if(S.personagens.length>=aventureirosMax()){flashHint("Sem aventureiros disponíveis — aumente População ou construa propriedades.");return;}
-  S.personagens.push({id:uid(),nome:"Novo personagem",rank:"",info:"",recursos:0,vida:10,vidaMax:10,funcao:"",notas:"",tags:"",expedicaoId:null});salvar();render();}
+  S.personagens.push({id:uid(),nome:"Novo personagem",rank:"",info:"",recursos:0,vida:10,vidaMax:10,funcao:"",notas:"",tags:"",expedicaoId:null,armas:[],itensPessoais:[]});salvar();render();}
+/* Personagens salvos antes de armas/itens pessoais existirem não têm essas listas — garante que existam antes de ler/escrever. */
+function charBase(c){if(!c.armas)c.armas=[];if(!c.itensPessoais)c.itensPessoais=[];return c;}
 /* geradores aleatórios e recrutamento */
 const NOMES_REINO=["Valdária","Montébria","Kaeloria","Terra Vermelha","Aldebrand","Norwick","Pedra Alta","Rio Claro","Vale Fundo","Corvália","Marlanda","Bruma Cinza","Ostfal","Carvalho Negro","Sereia","Alto Solar"];
 const EXP_SUB=["Companhia","Bandeira","Marcha","Vanguarda","Caravana","Expedição","Lança","Bando"];
@@ -960,7 +1056,7 @@ function nomeExpAleatorio(){return pick(EXP_SUB)+" "+pick(EXP_ADJ);}
 function addCharAleatorio(sugestao){
   if(bloqueadoLeitura())return;
   if(S.personagens.length>=aventureirosMax()){flashHint("Sem aventureiros disponíveis — aumente População ou construa propriedades.");return;}
-  S.personagens.push({id:uid(),nome:pick(NOMES_PESSOA),rank:"",info:sugestao||pick(INFO_PESSOA),recursos:0,vida:10,vidaMax:10,funcao:"",notas:"",tags:pick(TAGS_PESSOA),expedicaoId:null});salvar();render();}
+  S.personagens.push({id:uid(),nome:pick(NOMES_PESSOA),rank:"",info:sugestao||pick(INFO_PESSOA),recursos:0,vida:10,vidaMax:10,funcao:"",notas:"",tags:pick(TAGS_PESSOA),expedicaoId:null,armas:[],itensPessoais:[]});salvar();render();}
 function propsComRecruta(){const m=new Map();S.ativos.forEach(o=>{const a=ATIVOS.find(x=>x.id===o.id);if(a&&a.recruta&&!m.has(a.id))m.set(a.id,a);});return[...m.values()];}
 function aventureirosMax(){let n=2+Math.floor(attrTotal("populacao")/2);S.ativos.forEach(o=>{const a=ATIVOS.find(x=>x.id===o.id);if(a&&a.recruta)n+=1;});return n;}
 
@@ -1105,6 +1201,12 @@ function setCharExpedicao(id,val){
   c.expedicaoId=val||null;salvar();render();
 }
 function delChar(id){if(bloqueadoLeitura())return;S.personagens=S.personagens.filter(x=>x.id!==id);salvar();render();}
+/* Armas e itens pessoais: genéricos de propósito (sistema-agnóstico) — nome livre + uma nota curta, sem stats fixos. */
+function addArma(id){if(bloqueadoLeitura())return;const c=S.personagens.find(x=>x.id===id);if(!c)return;charBase(c);c.armas.push({id:uid(),nome:"",notas:""});salvar();render();}
+function setArma(id,armaId,campo,val){if(bloqueadoLeitura())return;const c=S.personagens.find(x=>x.id===id);if(!c)return;charBase(c);const a=c.armas.find(x=>x.id===armaId);if(!a)return;a[campo]=val;salvar();render();}
+function delArma(id,armaId){if(bloqueadoLeitura())return;const c=S.personagens.find(x=>x.id===id);if(!c)return;charBase(c);c.armas=c.armas.filter(x=>x.id!==armaId);salvar();render();}
+function addItemPessoal(id){if(bloqueadoLeitura())return;const c=S.personagens.find(x=>x.id===id);if(!c)return;charBase(c);const v=prompt("Item pessoal:");if(!v||!v.trim())return;c.itensPessoais.push(v.trim());salvar();render();}
+function delItemPessoal(id,i){if(bloqueadoLeitura())return;const c=S.personagens.find(x=>x.id===id);if(!c)return;charBase(c);c.itensPessoais.splice(i,1);salvar();render();}
 let charDetalhe=new Set();
 function toggleCharDetalhe(id){if(charDetalhe.has(id))charDetalhe.delete(id);else charDetalhe.add(id);renderChars();}
 function renderChars(){
@@ -1118,6 +1220,7 @@ function renderChars(){
   if(!S.personagens.length)tabela=`<span class="hint" style="margin:0">Nenhum personagem ainda. Recrute um aventureiro acima.</span>`;
   else{
     const rows=S.personagens.map(c=>{
+      charBase(c);
       const opts=`<option value="">—</option>`+S.expedicoes.map(e=>`<option value="${e.id}" ${c.expedicaoId===e.id?"selected":""}>${esc(e.nome)}</option>`).join("");
       const aberto=charDetalhe.has(c.id);
       const principal=`<tr>
@@ -1131,7 +1234,16 @@ function renderChars(){
         <td><select onchange="setCharExpedicao('${c.id}',this.value)">${opts}</select></td>
         <td><button class="ghost" title="detalhes / notas" onclick="toggleCharDetalhe('${c.id}')">${aberto?"▴":"▾"}</button></td>
         <td><button class="ghost" title="remover" onclick="delChar('${c.id}')">✕</button></td></tr>`;
+      const armasRows=c.armas.map(a=>`<div class="trow">
+          <input class="tn" style="width:130px" placeholder="arma/ataque" value="${esc(a.nome)}" onchange="setArma('${c.id}','${a.id}','nome',this.value)">
+          <input class="tn" style="width:150px" placeholder="dano/notas" value="${esc(a.notas)}" onchange="setArma('${c.id}','${a.id}','notas',this.value)">
+          <button class="ghost" title="remover" onclick="delArma('${c.id}','${a.id}')">✕</button></div>`).join("")||`<span class="hint" style="margin:0">nenhuma arma registrada</span>`;
+      const itensPessoaisHTML=c.itensPessoais.length?`<span class="inv">${c.itensPessoais.map((it,i)=>`<span class="it">${esc(it)}<button title="remover" onclick="delItemPessoal('${c.id}',${i})">✕</button></span>`).join("")}</span>`:`<span class="hint" style="margin:0">mochila vazia</span>`;
       const detalhe=aberto?`<tr><td colspan="10" style="padding:2px 4px 12px">
+        <label class="gml">Armas / ataques — genérico, sem regra fixa (nome + dano ou observação livre)</label>
+        <div class="maodeobra">${armasRows}<button class="ghost" style="margin-top:4px" onclick="addArma('${c.id}')">+ arma</button></div>
+        <label class="gml">Itens pessoais — mochila do personagem, separada do inventário da expedição</label>
+        <div class="maodeobra">${itensPessoaisHTML} <button class="ghost" style="font-size:11px;padding:2px 7px" onclick="addItemPessoal('${c.id}')">+ item</button></div>
         <label class="gml">Notas / background — desenvolva o personagem aqui</label>
         <textarea class="gmt" placeholder="história, motivações, ganchos de aventura..." onchange="setChar('${c.id}','notas',this.value)">${esc(c.notas||"")}</textarea>
       </td></tr>`:"";
@@ -1166,10 +1278,11 @@ function renderExpes(){
     const party=membros.length?membros.map(p=>`<span class="chip" title="dia ${e.dia==null?S.dias:e.dia} · recurso ${Number(p.recursos)||0} · vida ${Number(p.vida)||0}/${Number(p.vidaMax)||0}">${esc(p.nome)}${p.funcao?" · "+esc(p.funcao):""} — dia ${e.dia==null?S.dias:e.dia} · ◎${Number(p.recursos)||0} · ♥${Number(p.vida)||0}/${Number(p.vidaMax)||0}</span>`).join(""):`<span class="hint" style="margin:0">sem membros — atribua na tabela de personagens</span>`;
     const tsel=(campo,vals)=>`<select onchange="setExp('${e.id}','${campo}',this.value)">`+vals.map(v=>`<option ${e[campo]===v?"selected":""}>${v}</option>`).join("")+`</select>`;
     const risco=seguro?`<span style="color:var(--good)">território seguro</span>`:`<span style="color:var(--warn)">selvagem — risco de encontro${e.ritmo==="forçado"?" (ritmo forçado ↑)":""}</span>`;
+    const climaAqui=hex?climaHex(hex):null;
     const logs=(e.log||[]).slice(0,4).map(l=>`<div class="elog">Dia ${l.dia}: ${esc(l.txt)}</div>`).join("")||`<div class="hint" style="margin:0">sem registros</div>`;
     return `<div class="exp">
       <div class="eh"><input class="ename" value="${esc(e.nome)}" onchange="setExp('${e.id}','nome',this.value)"><button class="ghost" title="nome aleatório" onclick="setExp('${e.id}','nome',nomeExpAleatorio())">🎲</button><button class="ghost" onclick="delExp('${e.id}')">✕</button></div>
-      <div class="erow">◈ ${hex?TERRENOS[hex.terreno].nome:"—"} (${e.q},${e.r}) · ${risco}</div>
+      <div class="erow">◈ ${hex?TERRENOS[hex.terreno].nome:"—"} (${e.q},${e.r}) · ${risco}${climaAqui?` · ${climaIconHTML(climaAqui)} ${climaAqui.nome}`:""}</div>
       <div class="erow">Dia local <b style="color:var(--accent)">${e.dia==null?S.dias:e.dia}</b>${(e.dia!=null&&e.dia<S.dias)?` <span class="hint" style="margin:0">(reino já vai no dia ${S.dias} — esta expedição está atrasada)</span>`:""} · em campanha há ${e.diasUsados||0}d</div>
       <div class="erow">Transporte ${tsel("transporte",["a pé","montado","embarcação"])} Ritmo ${tsel("ritmo",["cauteloso","normal","forçado"])}</div>
       <div class="erow">Bolsa <b style="color:var(--accent)">${e.bolsa}</b> · Dívida c/ reino <b style="color:${e.divida>0?'var(--bad)':'var(--ink2)'}">${e.divida}</b></div>
@@ -1191,6 +1304,8 @@ document.getElementById("btnRolar").onclick=()=>selecionarOrigem(ORIGENS[Math.fl
 document.getElementById("btnAddExp").onclick=addExp;
 document.getElementById("diasPE").onchange=e=>{const v=parseInt(e.target.value);if(v>0){S.diasPorEstacao=v;salvar();}};
 document.getElementById("btnHardReset").onclick=()=>{if(confirm("Apagar TUDO e recomeçar do zero?")){try{localStorage.removeItem("kingdom_v12");}catch(e){}S=estadoInicial();selOrigem=null;selHex=null;expAtiva=null;salvar();render();}};
+document.getElementById("btnTema").onclick=alternarTema;
+aplicarTema();
 document.getElementById("btnNomeReino").onclick=()=>{document.getElementById("nomeInput").value=nomeReinoAleatorio();};
 document.getElementById("btnNomeDado").onclick=()=>{S.nome=nomeReinoAleatorio();salvar();render();};
 document.getElementById("btnMestre").onclick=()=>{if(papel!=="mestre"){flashHint("Só o mestre vê o mapa completo.");return;}modoMestre=!modoMestre;document.getElementById("btnMestre").textContent=modoMestre?"👁 Modo Jogador":"👁 Modo Mestre";render();};
