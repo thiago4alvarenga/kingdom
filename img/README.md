@@ -13,14 +13,16 @@ O app procura as imagens por caminho e nome fixos. Enquanto o arquivo não exist
 
 ## IDs das cartas (frente) — `img/cards/<id>.jpg`
 
-Bonança: `prosperidade`, `recurso_valioso`, `heroi_local`, `acordo_comercial`
-Cotidiano: `disputa_terras`, `festival`, `peregrinos`, `magistrado`
-Crise: `desastre`, `revolta`, `fome`, `bandidos`
+Bonança: `prosperidade`, `recurso_valioso`, `heroi_local`, `rumor_viajantes`, `colheita_farta`
+Cotidiano: `festival`, `magistrado`, `disputa_terras`, `mapas_antigos`
+Crise: `fome`, `desastre`, `bandidos`, `revolta`, `praga_lavoura`, `incendio`
+
+(lista atualizada em 2026-07-31 — os ids antigos `acordo_comercial` e `peregrinos` não existem mais no código, e `rumor_viajantes`/`mapas_antigos`/`colheita_farta`/`praga_lavoura`/`incendio` são novos. Ver `Direcao de Arte e Prompts.md` pros prompts de imagem dessas 15 cartas, já em lotes de 3-4 por imagem gerada.)
 
 ## IDs dos ativos — `img/assets/<id>.jpg`
 
-`fazendas`, `taverna`, `forte`, `quartel`, `porto`, `mina`, `ferreiro`, `guilda`, `templo`, `hospital`
-(já preenchidos com as ilustrações que estavam na pasta do projeto)
+`fazendas`, `taverna`, `forte`, `quartel`, `porto`, `estabulo`, `mina`, `ferreiro`, `cabana_cacador`, `guilda`, `guilda_anoes`, `herbalista`, `templo`, `biblioteca`, `hospital`, `torre_mago`, `posto_avancado`
+(todos já preenchidos)
 
 ## Dica
 

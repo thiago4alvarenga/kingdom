@@ -195,6 +195,8 @@
   .trow .tn,.trow .tf{font-size:11px;padding:3px 5px;width:70px}
   .trow button{font-size:10.5px;padding:2px 6px}
   .gml{display:block;font-size:11px;color:var(--muted-tx);margin:8px 0 3px}
+  .gmtool{border:1px dashed var(--line);border-radius:8px;padding:6px 10px 10px;margin-top:10px}
+  .gmtool summary{cursor:pointer;color:var(--accent);font-family:var(--font-display);padding:6px 0;font-size:13px}
   .gmt{width:100%;min-height:42px;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:6px;font:inherit;font-size:12px;resize:vertical}
   .inv{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0}
   .inv .it{font-size:11px;background:#2b3a2b;border:1px solid #3f5a3f;border-radius:6px;padding:2px 7px;color:#cfe0cf}
@@ -270,7 +272,8 @@
         <div>
           <div class="panel"><h2>A estação <span class="sub">— Colhe · Paga · Acontece · Age</span></h2>
             <div class="log" id="log"></div><div id="stage" class="cards"></div>
-            <div class="hint" id="stageHint">O tempo corre em dias: mova expedições ou use “Passar dias”. Renda e eventos acontecem sozinhos.</div></div>
+            <div class="hint" id="stageHint">O tempo corre em dias: mova expedições ou use “Passar dias”. Renda e eventos acontecem sozinhos.</div>
+            <div id="criarEvento"></div></div>
           <div class="panel"><h2>Propriedades do reino <span class="sub">— o que você construiu, com níveis</span></h2><div class="props" id="props"></div></div>
         </div>
       </div>
@@ -365,7 +368,9 @@ const BARALHOS={
     {id:"heroi_local",res:"sitio",titulo:"Ascensão de Herói Local",txt:"Um filho da terra parte para um grande feito.",
       efeito:{fama:1},sitio:{tipo:"local",nome:"Missão do Herói",txt:"Um feito à altura de um herói.",req:{attr:"militar",val:4},recomp:{fama:2,militar:1}}},
     {id:"rumor_viajantes",res:"rumor",titulo:"Rumores de Viajantes",txt:"Mercadores contam de ruínas ricas terra adentro.",
-      efeito:{},rumorSitio:{tipo:"recurso",nome:"Ruínas Ricas",txt:"Tesouro esquecido entre pedras.",req:null,recomp:{tesouro:25}}}],
+      efeito:{},rumorSitio:{tipo:"recurso",nome:"Ruínas Ricas",txt:"Tesouro esquecido entre pedras.",req:null,recomp:{tesouro:25}}},
+    {id:"colheita_farta",res:"propriedade",titulo:"Colheita Farta",txt:"Uma safra excepcional turbina a produção por um tempo.",
+      efeito:{},propEvento:{modo:"turbinar",dias:10,fatorBonus:1.5,filtroChave:"economia"}}],
   cotidiano:[
     {id:"festival",res:"inst",titulo:"Festival da Estação",txt:"O povo pede sua festa. Custa, mas anima.",efeito:{tesouro:-10,moral:1},auto:"padrao"},
     {id:"magistrado",res:"inst",titulo:"Magistrado de Renome",txt:"Um juiz íntegro aceita servir à corte.",efeito:{ordem:1,influencia:1},auto:"padrao"},
@@ -379,21 +384,27 @@ const BARALHOS={
     {id:"bandidos",res:"sitio",titulo:"Bandidos na Fronteira",txt:"Salteadores fortificam um esconderijo e cortam as rotas.",
       efeito:{ameaca:1},sitio:{tipo:"ameaca",nome:"Covil de Bandidos",txt:"Salteadores entrincheirados.",req:{attr:"militar",val:4},recomp:{ameaca:-2,tesouro:10}}},
     {id:"revolta",res:"sitio",titulo:"Revolta Camponesa",txt:"A fúria do interior se junta num foco de rebeldes.",
-      efeito:{moral:-1},sitio:{tipo:"ameaca",nome:"Foco de Revolta",txt:"Rebeldes entrincheirados exigem ser ouvidos.",req:{attr:"influencia",val:4},recomp:{ameaca:-1,ordem:1,moral:1}}}]};
+      efeito:{moral:-1},sitio:{tipo:"ameaca",nome:"Foco de Revolta",txt:"Rebeldes entrincheirados exigem ser ouvidos.",req:{attr:"influencia",val:4},recomp:{ameaca:-1,ordem:1,moral:1}}},
+    {id:"praga_lavoura",res:"propriedade",titulo:"Praga na Lavoura",txt:"Uma doença ataca plantações e currais, a produção para.",
+      efeito:{},propEvento:{modo:"desativar",dias:14,filtroChave:"economia"}},
+    {id:"incendio",res:"propriedade",titulo:"Incêndio Devastador",txt:"O fogo se alastra rápido demais pra conter — a construção não resiste.",
+      efeito:{moral:-1},propEvento:{modo:"destruir"}}]};
 
 /* Ativos: mods (atributos) + instr (instrumento de expedição) */
 /* upkeep = gasto diário de Tesouro por nível (só nas que não geram Economia — soldados, clero,
    estudiosos e a equipe do hospital não trabalham a terra nem o comércio, mas ainda comem e custam). */
+/* multiplo:true = pode ter mais de uma cópia (terra/recurso, escala com território/mão de obra);
+   sem essa flag, só 1 cópia (institucional/único no reino) — ver comprarAtivo(). */
 const ATIVOS=[
-  {id:"fazendas",nome:"Fazendas",img:"fazendas.jpg",custo:20,mods:{economia:1,populacao:1}},
-  {id:"taverna",nome:"Taverna",img:"taverna.jpg",custo:20,mods:{fama:1,economia:1},loja:"taverna"},
+  {id:"fazendas",nome:"Fazendas",img:"fazendas.jpg",custo:20,mods:{economia:1,populacao:1},multiplo:true},
+  {id:"taverna",nome:"Taverna",img:"taverna.jpg",custo:20,mods:{fama:1,economia:1},loja:"taverna",multiplo:true},
   {id:"forte",nome:"Forte",img:"forte.jpg",custo:40,mods:{militar:2,moral:1},upkeep:1.5},
   {id:"quartel",nome:"Quartel",img:"quartel.jpg",custo:35,mods:{militar:2},reqAttr:{militar:2},recruta:{sugestao:"soldado / combatente treinado"},upkeep:1.2},
   {id:"porto",nome:"Porto",img:"porto.jpg",custo:35,mods:{economia:1},instr:"embarcacao",instrTxt:"libera transporte por embarcação",reqAttr:{economia:4}},
-  {id:"estabulo",nome:"Estábulos",img:"estabulo.jpg",custo:25,mods:{militar:1,populacao:1},instr:"montaria",instrTxt:"libera transporte montado",reqAttr:{populacao:3}},
-  {id:"mina",nome:"Mineração",img:"mina.jpg",custo:30,mods:{economia:2}},
-  {id:"ferreiro",nome:"Ferreiro",img:"ferreiro.jpg",custo:25,mods:{militar:1,economia:1},reqAttr:{militar:1},loja:"ferreiro"},
-  {id:"cabana_cacador",nome:"Cabana do Caçador",img:"cabana_cacador.jpg",custo:22,mods:{militar:1},reqAttr:{populacao:2},recruta:{sugestao:"caçador / atirador"},loja:"cabana_cacador"},
+  {id:"estabulo",nome:"Estábulos",img:"estabulo.jpg",custo:25,mods:{militar:1,populacao:1},instr:"montaria",instrTxt:"libera transporte montado",reqAttr:{populacao:3},multiplo:true,loja:"estabulo"},
+  {id:"mina",nome:"Mineração",img:"mina.jpg",custo:30,mods:{economia:2},multiplo:true},
+  {id:"ferreiro",nome:"Ferreiro",img:"ferreiro.jpg",custo:25,mods:{militar:1,economia:1},reqAttr:{militar:1},loja:"ferreiro",multiplo:true},
+  {id:"cabana_cacador",nome:"Cabana do Caçador",img:"cabana_cacador.jpg",custo:22,mods:{militar:1},reqAttr:{populacao:2},recruta:{sugestao:"caçador / atirador"},loja:"cabana_cacador",multiplo:true},
   {id:"guilda",nome:"Guilda",img:"guilda.jpg",custo:30,mods:{influencia:1,economia:1},instr:"cartografia",instrTxt:"mapas: menos risco de encontro",reqAttr:{economia:3,influencia:1},recruta:{sugestao:"explorador / batedor"},especial:"sitio"},
   {id:"guilda_anoes",nome:"Guilda de Anões",img:"anoes.jpg",custo:40,mods:{economia:1,militar:1},cap:"mineracao",capTxt:"permite assentar montanhas",reqAttr:{economia:5,militar:2},recruta:{sugestao:"minerador / engenheiro"}},
   {id:"herbalista",nome:"Herbalista",img:"herbalista.jpg",custo:22,mods:{populacao:1},instr:"remedios",instrTxt:"remédios: reduz risco de encontro",reqAttr:{populacao:3},recruta:{sugestao:"curandeiro / herbalista"}},
@@ -407,8 +418,10 @@ const ATIVOS=[
    Catálogo padrão sugestivo (RPG medieval estilo D&D) para propriedades de serviço.
    "nivel" = nível mínimo da propriedade para o item aparecer (evoluir a loja destrava mais itens).
    O mestre pode adaptar: adicionar itens próprios e editar qualquer preço (sugestão, não regra fixa). */
+/* restockDias = tempo entre reposições de estoque (comércio nas lojas de item, cria/reprodução
+   nos animais dos Estábulos — por isso o Estábulo é mais lento que as outras). Ver garantirEstoque(). */
 const LOJAS={
-  taverna:{titulo:"Taverna — provisões e estadia",itens:[
+  taverna:{titulo:"Taverna — provisões e estadia",restockDias:5,itens:[
     {id:"racao",nome:"Ração de viagem (1 semana)",preco:2,nivel:1},
     {id:"noite_pousada",nome:"Noite na pousada",preco:1,nivel:1},
     {id:"cerveja",nome:"Barril de cerveja",preco:3,nivel:1},
@@ -418,7 +431,7 @@ const LOJAS={
     {id:"cavalo_alugado",nome:"Cavalo de aluguel (uma jornada)",preco:6,nivel:2},
     {id:"suite",nome:"Suíte da pousada (descanso pleno)",preco:6,nivel:3},
     {id:"festim",nome:"Festim privado (facilita recrutar)",preco:15,nivel:3}]},
-  ferreiro:{titulo:"Ferreiro — armas e armaduras",itens:[
+  ferreiro:{titulo:"Ferreiro — armas e armaduras",restockDias:6,itens:[
     {id:"adaga",nome:"Adaga",preco:2,nivel:1},
     {id:"espada_curta",nome:"Espada curta",preco:10,nivel:1},
     {id:"machado_batalha",nome:"Machado de batalha",preco:10,nivel:1},
@@ -429,7 +442,7 @@ const LOJAS={
     {id:"escudo_ferro",nome:"Escudo de ferro",preco:10,nivel:2},
     {id:"armadura_placas",nome:"Armadura de placas",preco:150,nivel:3},
     {id:"arma_encomendada",nome:"Arma forjada sob encomenda",preco:200,nivel:3}]},
-  cabana_cacador:{titulo:"Cabana do Caçador — arcos e apetrechos",itens:[
+  cabana_cacador:{titulo:"Cabana do Caçador — arcos e apetrechos",restockDias:5,itens:[
     {id:"arco_curto",nome:"Arco curto",preco:10,nivel:1},
     {id:"feixe_flechas",nome:"Feixe de flechas (20)",preco:1,nivel:1},
     {id:"armadilha_caca",nome:"Armadilha de caça",preco:3,nivel:1},
@@ -437,14 +450,49 @@ const LOJAS={
     {id:"arco_longo",nome:"Arco longo",preco:20,nivel:2},
     {id:"aljava_reforcada",nome:"Aljava reforçada",preco:5,nivel:2},
     {id:"besta",nome:"Besta",preco:25,nivel:3},
-    {id:"flechas_especiais",nome:"Flechas especiais (fogo/prata)",preco:15,nivel:3}]}
+    {id:"flechas_especiais",nome:"Flechas especiais (fogo/prata)",preco:15,nivel:3}]},
+  estabulo:{titulo:"Estábulos — montarias e animais",restockDias:14,itens:[
+    {id:"pombo_correio",nome:"Pombo-correio",preco:3,nivel:1},
+    {id:"cao_guarda",nome:"Cão de guarda",preco:5,nivel:1},
+    {id:"mula_carga",nome:"Mula de carga",preco:8,nivel:1},
+    {id:"cavalo",nome:"Cavalo",preco:15,nivel:2},
+    {id:"boi_carga",nome:"Boi de carga",preco:18,nivel:2},
+    {id:"falcao_cacador",nome:"Falcão caçador",preco:20,nivel:2},
+    {id:"cavalo_batalha",nome:"Cavalo de batalha",preco:35,nivel:3},
+    {id:"corcel_raro",nome:"Corcel de raça rara",preco:80,nivel:3}]}
 };
+/* Estoque de loja: não é só "restaurar" pro cheio — cada reposição (comércio chegando,
+   animais se reproduzindo nos Estábulos) AUMENTA o estoque disponível, até um teto (2× a
+   base) pra não virar infinito num jogo longo sem ninguém comprar. Base por item = mais
+   estoque quanto mais barato (bugigangas comuns vs. armadura sob encomenda/corcel raro).
+   Cadência de reposição vem do catálogo (LOJAS[x].restockDias) — animais são mais lentos. */
+function estoqueBaseItem(item){return item.estoqueBase!=null?item.estoqueBase:Math.max(1,Math.round(30/Math.max(1,item.preco)));}
+function garantirEstoque(o,item,restockDias){
+  o.estoque=o.estoque||{};
+  let e=o.estoque[item.id];
+  const base=estoqueBaseItem(item),max=base*2;
+  if(!e){e={qtd:base,dia:S.dias};o.estoque[item.id]=e;return e;}
+  if(S.dias>e.dia){
+    const ticks=Math.floor((S.dias-e.dia)/(restockDias||5));
+    if(ticks>0){
+      const cresc=Math.max(1,Math.ceil(base*0.25))*ticks;
+      e.qtd=Math.min(max,e.qtd+cresc);
+      e.dia+=ticks*(restockDias||5);
+    }
+  }
+  return e;
+}
 /* Itens de uma instância de propriedade: catálogo (até o nível atual) + preços editados + itens extras do mestre. */
 function itensDaLoja(o){
   const a=ATIVOS.find(x=>x.id===o.id);if(!a||!a.loja)return[];
   const cat=LOJAS[a.loja];if(!cat)return[];
-  const base=cat.itens.filter(it=>it.nivel<=o.nivel).map(it=>({...it,preco:(o.precos&&o.precos[it.id]!=null)?o.precos[it.id]:it.preco}));
-  return base.concat(o.itensExtra||[]);
+  const base=cat.itens.filter(it=>it.nivel<=o.nivel).map(it=>{
+    const item={...it,preco:(o.precos&&o.precos[it.id]!=null)?o.precos[it.id]:it.preco};
+    item.estoque=garantirEstoque(o,item,cat.restockDias).qtd;
+    return item;
+  });
+  const extras=(o.itensExtra||[]).map(it=>({...it,estoque:garantirEstoque(o,it,cat.restockDias).qtd}));
+  return base.concat(extras);
 }
 function lojaAddItem(propUid){
   if(papel!=="mestre"){flashHint("Só o mestre acrescenta itens à loja.");return;}
@@ -466,10 +514,19 @@ function lojaRemoverItem(propUid,itemId){
   if(papel!=="mestre")return;const o=S.ativos.find(x=>x.uid===propUid);if(!o||!o.itensExtra)return;
   o.itensExtra=o.itensExtra.filter(x=>x.id!==itemId);salvar();render();
 }
+function lojaEditarEstoque(propUid,itemId,atual){
+  if(papel!=="mestre"){flashHint("Só o mestre edita estoque.");return;}
+  const o=S.ativos.find(x=>x.uid===propUid);if(!o)return;
+  const novo=parseInt(prompt("Novo estoque disponível:",atual));if(novo==null||isNaN(novo)||novo<0)return;
+  o.estoque=o.estoque||{};o.estoque[itemId]=o.estoque[itemId]||{qtd:0,dia:S.dias};
+  o.estoque[itemId].qtd=novo;
+  salvar();render();
+}
 function comprarItemLoja(propUid,itemId,destino){
   if(bloqueadoLeitura())return;
   const o=S.ativos.find(x=>x.uid===propUid);if(!o)return;
   const item=itensDaLoja(o).find(x=>x.id===itemId);if(!item)return;
+  if((item.estoque||0)<=0){flashHint("Sem estoque agora — espere a próxima reposição.");return;}
   if(destino&&destino.startsWith("exp:")){
     const e=getExp(destino.slice(4));if(!e){flashHint("Expedição não encontrada.");return;}
     if(e.bolsa<item.preco){flashHint("Bolsa da expedição insuficiente.");return;}
@@ -487,6 +544,8 @@ function comprarItemLoja(propUid,itemId,destino){
     S.med.tesouro-=item.preco;
     feedPush(`Gasto do dia a dia: ${item.nome} (−${item.preco} do Tesouro).`);
   }
+  o.estoque=o.estoque||{};
+  if(o.estoque[itemId])o.estoque[itemId].qtd=Math.max(0,o.estoque[itemId].qtd-1);
   salvar();render();
 }
 
@@ -812,7 +871,10 @@ function aplicar(efeito,esc=1){if(!efeito)return;
    no valor "total" (attrTotal/medTotal) usado em toda checagem e exibição. */
 function propBonus(key){let s=0;
   S.ativos.forEach(o=>{if(!((o.trabalhadores||[]).length))return;
-    const a=ATIVOS.find(x=>x.id===o.id);if(a&&a.mods&&a.mods[key])s+=a.mods[key]*o.nivel;});
+    const a=ATIVOS.find(x=>x.id===o.id);if(a&&a.mods&&a.mods[key]){
+      const fator=(o.evento&&o.evento.fatorBonus!=null)?o.evento.fatorBonus:1;
+      s+=a.mods[key]*o.nivel*fator;
+    }});
   return s;}
 function attrTotal(k){return clamp(S.attr[k]+propBonus(k),LIM_ATTR);}
 function medTotal(k){return LIM_MED[k]?clamp(S.med[k]+propBonus(k),LIM_MED[k]):S.med[k];}
@@ -838,7 +900,14 @@ const EVENTOS_ESTACAO={
 };
 function estacaoAtualIdx(){return Math.floor(S.dias/S.diasPorEstacao)%4;}
 function anoAtual(){return Math.floor(S.dias/(S.diasPorEstacao*4))+1;}
-function dailyIncome(){return attrTotal("economia")*ESTACOES[estacaoAtualIdx()][2];}
+/* S.impostosCortados: rebelião/desordem por Moral baixa reduz a renda por um tempo
+   (não é um golpe único no Tesouro guardado, é a arrecadação em si que fica capenga
+   enquanto durar) — ver checarColetaImpostos(). */
+function dailyIncome(){
+  let base=attrTotal("economia")*ESTACOES[estacaoAtualIdx()][2];
+  if(S.impostosCortados&&S.impostosCortados.diasRestantes>0)base*=(1-S.impostosCortados.fator);
+  return base;
+}
 /* Sustento diário: propriedades não-produtivas (militares, clero, estudiosos, curandeiros)
    custam Tesouro por nível — quem trabalha a terra ou o comércio (Fazendas, Mina, Ferreiro etc.)
    não entra aqui. Some a isso o consumo de população livre (não alocada em nenhuma propriedade):
@@ -864,6 +933,50 @@ function avancarObras(){
     }
   });
 }
+/* Eventos temporários de propriedade (praga, colheita farta etc. — ver BARALHOS res:"propriedade"
+   e o painel do Mestre pra criar na mão): correm o tempo deles independente de mão de obra
+   (é algo acontecendo COM a propriedade, não uma obra esperando gente). fatorBonus multiplica
+   o bônus normal em propBonus() — 0 desativa, >1 turbina, null/ausente = bônus normal. */
+function avancarEventosPropriedade(){
+  S.ativos.forEach(o=>{
+    if(!o.evento)return;
+    o.evento.diasRestantes--;
+    if(o.evento.diasRestantes<=0){
+      const a=ATIVOS.find(x=>x.id===o.id);
+      feedPush(`${a?a.nome:"Propriedade"}: efeito de "${o.evento.nome}" terminou — produção volta ao normal.`);
+      o.evento=null;
+    }
+  });
+}
+function avancarImpostosCortados(){
+  if(!S.impostosCortados||S.impostosCortados.diasRestantes<=0)return;
+  S.impostosCortados.diasRestantes--;
+  if(S.impostosCortados.diasRestantes<=0){S.impostosCortados=null;feedPush("A coleta de impostos volta ao normal.");}
+}
+/* Saques: Ameaça acima do Militar significa gente saqueando território desprotegido —
+   tira Tesouro direto, escalando com o tamanho do descontrole (não é garantido toda semana,
+   só uma chance, pra não virar um imposto automático). */
+function checarSaques(){
+  const gap=medTotal("ameaca")-attrTotal("militar");
+  if(gap<=0)return;
+  const chance=Math.min(0.6,0.15+gap*0.08);
+  if(Math.random()<chance){
+    const perda=Math.round((5+gap*4)*(0.7+Math.random()*0.6));
+    S.med.tesouro=Math.max(0,S.med.tesouro-perda);
+    feedPush(`⚔ Saqueadores atacam com a Ameaça (${medTotal("ameaca")}) acima do Militar (${attrTotal("militar")}): −${perda} Tesouro.`);
+  }
+}
+/* Moral baixa: chance de rebelião/desordem atrapalhar a coleta de impostos por um tempo
+   (reduz dailyIncome, não desconta o Tesouro já guardado). Não empilha se já estiver em curso. */
+const MORAL_COLETA_LIMIAR=3;
+function checarColetaImpostos(){
+  if(S.impostosCortados&&S.impostosCortados.diasRestantes>0)return;
+  if(medTotal("moral")>MORAL_COLETA_LIMIAR)return;
+  if(Math.random()<0.35){
+    S.impostosCortados={diasRestantes:10,fator:0.4};
+    feedPush(`📉 Moral baixa (${medTotal("moral")}): desordem atrapalha a coleta de impostos — renda de Economia cai 40% por 10 dias.`);
+  }
+}
 function feedPush(txt){S.feed=S.feed||[];S.feed.unshift({dia:S.dias,txt});if(S.feed.length>30)S.feed.pop();}
 const CRESCIMENTO_CADA=30; // dias entre tentativas de crescimento populacional
 function avancarDias(n){
@@ -873,10 +986,12 @@ function avancarDias(n){
     S.med.tesouro=Math.max(0,S.med.tesouro+bruto-sust);
     S.ativos.forEach(o=>{(o.trabalhadores||[]).forEach(t=>t.dias++);});
     avancarObras();
+    avancarEventosPropriedade();
+    avancarImpostosCortados();
     if(S.dias%EVENTO_CADA===0){dispararEvento();novidadeInfluencia();}
     if(S.dias%S.diasPorEstacao===0)eventoDeEstacao();
     if(S.dias%CRESCIMENTO_CADA===0)tentarCrescimentoPopulacao();
-    if(S.dias%DEFESA_LOCAL_CADA===0){checarDefesaAssentamentos();checarPressaoAmeaca();}
+    if(S.dias%DEFESA_LOCAL_CADA===0){checarDefesaAssentamentos();checarPressaoAmeaca();checarSaques();checarColetaImpostos();}
     checarClimaAssentamentos();
   }
 }
@@ -908,11 +1023,41 @@ function ajustarPopulacaoManual(delta){
   feedPush(`Mestre ajustou População manualmente: ${delta>0?"+":""}${delta}.`);
   salvar();render();
 }
+/* Alvo de evento de propriedade: só propriedades já construídas (nivel>=1), sem obra em
+   andamento, sem já ter um evento rolando (não empilha), e opcionalmente só as que produzem
+   a chave pedida (ex: "economia" pra praga/colheita — não faz sentido praga num Forte). */
+function alvoPropriedade(filtroChave){
+  const cands=S.ativos.filter(o=>{
+    if(o.nivel<1||o.obra||o.evento)return false;
+    if(!filtroChave)return true;
+    const a=ATIVOS.find(x=>x.id===o.id);
+    return a&&a.mods&&a.mods[filtroChave]>0;
+  });
+  if(!cands.length)return null;
+  return cands[Math.floor(Math.random()*cands.length)];
+}
+function resolverEventoPropriedade(pe){
+  const o=alvoPropriedade(pe.filtroChave);if(!o)return null;
+  const a=ATIVOS.find(x=>x.id===o.id);
+  if(pe.modo==="destruir"){
+    S.ativos=S.ativos.filter(x=>x.uid!==o.uid);
+    const cap=getHex(0,0);if(cap){const idx=cap.constr.indexOf(o.id);if(idx>=0)cap.constr.splice(idx,1);}
+    return`${a?a.nome:"propriedade"} foi destruída`;
+  }
+  o.evento={nome:pe._nomeCarta||"Evento",diasRestantes:pe.dias,fatorBonus:pe.modo==="desativar"?0:(pe.fatorBonus||1)};
+  return`${a?a.nome:"propriedade"} ${pe.modo==="desativar"?"desativada":"com produção turbinada"} por ${pe.dias}d`;
+}
 function dispararEvento(){
   const dif=DIFICULDADE[S.dificuldade],c=comprarCarta(sortearBaralho());let extra="";
   if(c.res==="inst"){aplicar(c.efeito,dif.recompensa);resolverAuto(c);extra=c._auto?" — "+c._auto:"";}
   else if(c.res==="sitio"){aplicar(c.efeito,dif.recompensa);c._alvo=plantarSitio(c);extra=" — sítio surgiu no mapa";}
   else if(c.res==="rumor"){c._alvo=revelarRumor(c);extra=" — rumor revelou um hex";}
+  else if(c.res==="propriedade"){
+    aplicar(c.efeito,dif.recompensa);
+    c.propEvento._nomeCarta=c.titulo;
+    const r=resolverEventoPropriedade(c.propEvento);
+    extra=r?` — ${r}`:" — sem propriedade elegível, nada aconteceu";
+  }
   const nomes={bonanca:"Bonança",cotidiano:"Cotidiano",crise:"Crise"};
   feedPush(`[${nomes[c.baralho]}] ${c.titulo}${extra}`);
   S.eventos=([c].concat(S.eventos||[])).slice(0,6);
@@ -955,6 +1100,7 @@ function decidir(id,idx){if(bloqueadoLeitura())return;const c=S.pendentes.find(x
    fica pendente, "parada no canteiro", até alguém ser colocado pra tocar a obra. */
 function diasDeObra(custo){return Math.max(1,Math.round(custo/5));}
 function comprarAtivo(id){if(bloqueadoLeitura())return;const a=ATIVOS.find(x=>x.id===id);if(!a)return;
+  if(!a.multiplo&&S.ativos.some(o=>o.id===a.id)){flashHint(`${a.nome} é única no reino — já construída.`);return;}
   if(a.reqAttr){for(const [k,v] of Object.entries(a.reqAttr))if(attrTotal(k)<v){flashHint(`Requer ${labelCurto(k)} ${v}+ para ${a.nome}.`);return;}}
   if(S.med.tesouro<a.custo){flashHint("Tesouro insuficiente.");return;}
   // Bônus (a.mods) não é somado de forma permanente: só conta enquanto a propriedade tem
@@ -1012,18 +1158,21 @@ function render(){
   document.getElementById("shop").innerHTML=ATIVOS.map(a=>{
     const mods=Object.entries(a.mods).map(([k,v])=>`${labelCurto(k)} ${v>0?"+":""}${v}`).join(" · ");
     const reqOk=!a.reqAttr||Object.entries(a.reqAttr).every(([k,v])=>attrTotal(k)>=v);
-    const pode=S.med.tesouro>=a.custo&&reqOk;const temInstr=a.instr&&instr.has(a.instr);
+    const jaTem=S.ativos.some(o=>o.id===a.id);
+    const pode=S.med.tesouro>=a.custo&&reqOk&&(a.multiplo||!jaTem);const temInstr=a.instr&&instr.has(a.instr);
     const reqTxt=a.reqAttr?Object.entries(a.reqAttr).map(([k,v])=>`${labelCurto(k)} ${v}+`).join(", "):"";
+    const qtd=S.ativos.filter(o=>o.id===a.id).length;
     return `<div class="asset"><div class="imgslot"><span class="ph">img/assets/${a.img}</span>
       <img src="img/assets/${a.img}" alt="${a.nome}" onerror="this.remove()"></div>
-      <div class="ab"><div class="an">${a.nome}</div><div class="am">${mods}</div>
+      <div class="ab"><div class="an">${a.nome}${qtd?` <span class="pnv">×${qtd}</span>`:""}</div><div class="am">${mods}</div>
       ${a.instr?`<div class="instr">⚑ ${a.instrTxt}${temInstr?" ✓":""}</div>`:""}
       ${a.cap?`<div class="instr">⚒ ${a.capTxt}${capacidades().has(a.cap)?" ✓":""}</div>`:""}
       ${a.reqAttr?`<div class="instr" style="color:${reqOk?'var(--good)':'var(--warn)'}">requer ${reqTxt}</div>`:""}
+      ${!a.multiplo&&jaTem?`<div class="instr" style="color:var(--muted-tx)">única no reino — já construída</div>`:""}
       <button class="buy" ${pode?"":"disabled"} onclick="comprarAtivo('${a.id}')">Comprar · ${a.custo}</button></div></div>`;}).join("");
   document.getElementById("btnAvancar").disabled=false;
   renderStage(S.eventos||[]);renderFeed();
-  renderMapa();renderLegend();renderExpBar();renderExpInfo();renderChars();renderExpes();renderPropriedades();renderComercio();renderTempo();renderSync();refreshStageHint();
+  renderMapa();renderLegend();renderExpBar();renderExpInfo();renderChars();renderExpes();renderPropriedades();renderComercio();renderTempo();renderSync();refreshStageHint();renderCriarEvento();
 }
 function renderTempo(){const d=document.getElementById("diaLab");if(d)d.textContent=diaMaisAvancado();
   const pe=document.getElementById("diasPE");if(pe&&document.activeElement!==pe)pe.value=S.diasPorEstacao;}
@@ -1179,6 +1328,67 @@ function carregar(){try{const r=localStorage.getItem("kingdom_v12");return r?JSO
 /* ===== SINCRONIZAÇÃO NA NUVEM (Supabase) ===== */
 let sb=null,sala=null,sbCanal=null,sbStatus="off",pushTimer=null;const meuCid=Math.random().toString(36).slice(2);
 let papel="mestre",presentes=[]; // papel: "mestre" (edita tudo) | "jogador" (somente leitura)
+/* Rascunho do "Mestre: criar evento personalizado" — estado de UI, não vai pro save do reino
+   (fica de pé só enquanto a tela está aberta, igual selHex/modoMestre). */
+let rascEvento={nome:"",efeitos:{},propUid:"",modoProp:"desativar",diasProp:7};
+function renderCriarEvento(){
+  const box=document.getElementById("criarEvento");if(!box)return;
+  if(papel!=="mestre"){box.innerHTML="";return;}
+  const linhasEfeito=Object.keys(rascEvento.efeitos).map(k=>`<div class="trow"><span class="tag" style="width:90px">${labelCurto(k)}</span>
+    <input class="tn" type="number" step="1" style="width:70px" value="${rascEvento.efeitos[k]}" onchange="setRascEventoValor('${k}',this.value)">
+    <button class="ghost" title="remover" onclick="delRascEventoChave('${k}')">✕</button></div>`).join("");
+  const opcoes=EFEITO_CHAVES.filter(k=>!(k in rascEvento.efeitos)).map(k=>`<option value="${k}">${labelCurto(k)}</option>`).join("");
+  const propsProntas=S.ativos.filter(o=>o.nivel>=1);
+  const propOpts=`<option value="">— nenhuma propriedade —</option>`+propsProntas.map(o=>{const a=ATIVOS.find(x=>x.id===o.id);return `<option value="${o.uid}" ${rascEvento.propUid===o.uid?"selected":""}>${a?a.nome:o.id}${o.evento?" (já tem evento)":""}</option>`;}).join("");
+  const propSel=rascEvento.propUid&&propsProntas.some(o=>o.uid===rascEvento.propUid)?rascEvento.propUid:"";
+  box.innerHTML=`<details class="gmtool"><summary>🛠 Mestre: criar evento personalizado</summary>
+    <label class="gml">Nome do evento</label>
+    <input class="tn" style="width:100%" value="${esc(rascEvento.nome)}" placeholder="ex: Bênção da colheita" onchange="setRascEventoNome(this.value)">
+    <label class="gml">Efeitos em atributos/medidores (aplicados na hora, ao clicar em Aplicar)</label>
+    <div class="maodeobra">${linhasEfeito}${opcoes?`<div class="trow"><select id="novoRascChave">${opcoes}</select><button class="ghost" onclick="addRascEventoChave(document.getElementById('novoRascChave').value)">+ efeito</button></div>`:""}</div>
+    <label class="gml">Afetar uma propriedade já construída (opcional)</label>
+    <select onchange="setRascEventoProp(this.value)">${propOpts}</select>
+    ${propSel?`<div class="trow" style="margin-top:6px">
+      <select onchange="setRascEventoModoProp(this.value)">
+        <option value="desativar" ${rascEvento.modoProp==="desativar"?"selected":""}>Desativar bônus</option>
+        <option value="turbinar" ${rascEvento.modoProp==="turbinar"?"selected":""}>Turbinar bônus (×1.5)</option>
+        <option value="destruir" ${rascEvento.modoProp==="destruir"?"selected":""}>Destruir propriedade</option>
+      </select>
+      ${rascEvento.modoProp!=="destruir"?`<input class="tn" type="number" step="1" style="width:60px" value="${rascEvento.diasProp}" title="dias" onchange="setRascEventoDias(this.value)"><span class="hint" style="margin:0">dias</span>`:""}
+    </div>`:""}
+    <button class="buy" style="margin-top:8px" onclick="aplicarEventoPersonalizado()">Aplicar evento</button>
+  </details>`;
+}
+function setRascEventoNome(v){rascEvento.nome=v;}
+function setRascEventoValor(k,v){rascEvento.efeitos[k]=parseFloat(v)||0;}
+function addRascEventoChave(k){if(!k)return;if(!(k in rascEvento.efeitos))rascEvento.efeitos[k]=1;renderCriarEvento();}
+function delRascEventoChave(k){delete rascEvento.efeitos[k];renderCriarEvento();}
+function setRascEventoProp(uid){rascEvento.propUid=uid;renderCriarEvento();}
+function setRascEventoModoProp(m){rascEvento.modoProp=m;renderCriarEvento();}
+function setRascEventoDias(v){rascEvento.diasProp=Math.max(1,parseInt(v)||1);}
+function aplicarEventoPersonalizado(){
+  if(papel!=="mestre")return;
+  const nome=(rascEvento.nome||"Evento do Mestre").trim()||"Evento do Mestre";
+  if(Object.keys(rascEvento.efeitos).length)aplicar(rascEvento.efeitos,1);
+  let extra="";
+  if(rascEvento.propUid){
+    const o=S.ativos.find(x=>x.uid===rascEvento.propUid);
+    if(o){
+      const a=ATIVOS.find(x=>x.id===o.id);
+      if(rascEvento.modoProp==="destruir"){
+        S.ativos=S.ativos.filter(x=>x.uid!==o.uid);
+        const cap=getHex(0,0);if(cap){const idx=cap.constr.indexOf(o.id);if(idx>=0)cap.constr.splice(idx,1);}
+        extra=` — ${a?a.nome:"propriedade"} destruída`;
+      }else{
+        o.evento={nome,diasRestantes:rascEvento.diasProp,fatorBonus:rascEvento.modoProp==="turbinar"?1.5:0};
+        extra=` — ${a?a.nome:"propriedade"} ${rascEvento.modoProp==="turbinar"?"turbinada":"desativada"} por ${rascEvento.diasProp}d`;
+      }
+    }
+  }
+  feedPush(`🛠 [Evento do Mestre] ${nome}${extra}`);
+  rascEvento={nome:"",efeitos:{},propUid:"",modoProp:"desativar",diasProp:7};
+  salvar();render();
+}
 function sbPronto(){return !!(SUPA_URL&&SUPA_KEY&&window.supabase);}
 function sbInit(){if(sb||!sbPronto())return;sb=window.supabase.createClient(SUPA_URL,SUPA_KEY);}
 /* Trava de escrita: chame no topo de toda função que muda o estado do jogo. */
@@ -1299,22 +1509,27 @@ function renderLojaHTML(o,a){
   const cat=LOJAS[a.loja];if(!cat)return"";
   const itens=itensDaLoja(o);
   const prox=cat.itens.filter(it=>it.nivel===o.nivel+1);
-  const linhas=itens.map(it=>`<div class="lrow">
-      <span class="ln">${esc(it.nome)}</span>
+  const linhas=itens.map(it=>{
+    const semEstoque=(it.estoque||0)<=0;
+    return `<div class="lrow">
+      <span class="ln">${esc(it.nome)}${semEstoque?' <span style="color:var(--bad)">(sem estoque)</span>':""}</span>
       <span class="lp" ${papel==="mestre"?`onclick="lojaEditarPreco('${o.uid}','${it.id}',${it.preco})" title="editar preço (mestre)"`:""}>${it.preco}</span>
+      <span class="lp" style="${semEstoque?"color:var(--bad)":""}" ${papel==="mestre"?`onclick="lojaEditarEstoque('${o.uid}','${it.id}',${it.estoque})" title="editar estoque (mestre)"`:""} title="estoque disponível">${it.estoque}✕</span>
       <select class="destSel">${destinoOpts()}</select>
-      <button onclick="comprarItemLoja('${o.uid}','${it.id}', this.previousElementSibling.value)">Comprar</button>
+      <button ${semEstoque?"disabled":""} onclick="comprarItemLoja('${o.uid}','${it.id}', this.previousElementSibling.value)">Comprar</button>
       ${papel==="mestre"&&it.custom?`<button class="ghost" title="remover" onclick="lojaRemoverItem('${o.uid}','${it.id}')">✕</button>`:""}
-    </div>`).join("");
+    </div>`;
+  }).join("");
   return `<div class="loja"><div class="ltitulo">${cat.titulo}</div>
     ${linhas||'<span class="hint" style="margin:0">sem itens neste nível</span>'}
+    <div class="hint" style="margin:4px 0 0">estoque repõe (e cresce) a cada ${cat.restockDias||5} dias</div>
     ${prox.length?`<div class="hint" style="margin:4px 0 0">evolua para nível ${o.nivel+1} e destrave: ${prox.map(p=>esc(p.nome)).join(", ")}</div>`:""}
     ${papel==="mestre"?`<button class="ghost" style="font-size:11px;padding:3px 8px;margin-top:6px" onclick="lojaAddItem('${o.uid}')">+ item (mestre)</button>`:""}
   </div>`;
 }
 function renderComercio(){const box=document.getElementById("comercio");if(!box)return;
   const comLoja=S.ativos.filter(o=>{const a=ATIVOS.find(x=>x.id===o.id);return a&&a.loja&&propPronta(o);});
-  if(!comLoja.length){box.innerHTML=`<span class="hint" style="margin:0">Nenhuma propriedade com loja ainda (Taverna, Ferreiro, Cabana do Caçador...).</span>`;return;}
+  if(!comLoja.length){box.innerHTML=`<span class="hint" style="margin:0">Nenhuma propriedade com loja ainda (Taverna, Ferreiro, Cabana do Caçador, Estábulos...).</span>`;return;}
   box.innerHTML=comLoja.map(o=>{const a=ATIVOS.find(x=>x.id===o.id);
     return `<div class="prop" style="display:block"><div class="pn" style="margin-bottom:6px">${a.nome} <span class="pnv">Nível ${o.nivel}</span></div>
       ${renderLojaHTML(o,a)}</div>`;}).join("");}
@@ -1355,9 +1570,14 @@ function renderPropriedades(){const box=document.getElementById("props");if(!box
     const modsHtml=o.nivel<1?`<span style="opacity:.45">ainda não construída</span>`
       :`<span style="${ativo?"":"opacity:.45;text-decoration:line-through"}">${mods}</span>`+
         (ativo?"":' <span style="color:var(--warn)">— inativo, aloque população pra ativar</span>');
+    let eventoHtml="";
+    if(o.evento){
+      const negativo=(o.evento.fatorBonus||0)<1;
+      eventoHtml=`<div class="pm" style="color:${negativo?"var(--bad)":"var(--good)"}">${negativo?"☣":"✦"} ${esc(o.evento.nome)}: ${o.evento.diasRestantes}d restantes${negativo?" (bônus desativado)":" (bônus turbinado)"}</div>`;
+    }
     return `<div class="prop"><div class="pimg"><span class="ph">img/assets/${a.img}</span><img src="img/assets/${a.img}" onerror="this.remove()"></div>
       <div class="pb"><div class="pn">${a.nome} <span class="pnv">Nível ${o.nivel}</span></div>
-      ${obraHtml}
+      ${obraHtml}${eventoHtml}
       <div class="pm">${modsHtml}${o.nivel>=1?`${a.instr?" · ⚑ "+a.instrTxt:""}${a.cap?" · ⚒ "+a.capTxt:""}${a.recruta?" · ♟ treina: "+a.recruta.sugestao:""}`:""}</div>
       <button class="buy" onclick="evoluirPropriedade('${o.uid}')" ${emObra?"disabled":""}>Evoluir · ${30*o.nivel}</button>
       ${especialBtnHTML(a,o)}
