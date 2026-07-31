@@ -599,8 +599,12 @@ function novoHex(q,r){
   return {q,r,terreno,rio,estado:"oculto",capital:false,constr:[],sitio:null,nota:"",encontro:"",militarLocal:1};
 }
 function ensureHex(q,r){if(Math.max(Math.abs(q),Math.abs(r),Math.abs(q+r))>MAX_R)return getHex(q,r);let h=getHex(q,r);if(!h){h=novoHex(q,r);S.hexes.push(h);}return h;}
-function instrumentos(){const s=new Set();S.ativos.forEach(o=>{const a=ATIVOS.find(x=>x.id===o.id);if(a&&a.instr)s.add(a.instr);});return s;}
-function capacidades(){const s=new Set();S.ativos.forEach(o=>{const a=ATIVOS.find(x=>x.id===o.id);if(a&&a.cap)s.add(a.cap);});return s;}
+/* o.nivel>=1 = já foi construída ao menos uma vez (não conta enquanto é a primeira obra,
+   nivel 0 — ver comprarAtivo/avancarObras). Uma propriedade evoluindo (nivel>=1, obra
+   pendente pro próximo nível) continua funcionando normalmente nesse meio-tempo. */
+function propPronta(o){return o.nivel>=1;}
+function instrumentos(){const s=new Set();S.ativos.forEach(o=>{const a=ATIVOS.find(x=>x.id===o.id);if(a&&a.instr&&propPronta(o))s.add(a.instr);});return s;}
+function capacidades(){const s=new Set();S.ativos.forEach(o=>{const a=ATIVOS.find(x=>x.id===o.id);if(a&&a.cap&&propPronta(o))s.add(a.cap);});return s;}
 function vizinhosIncorp(h){return DIRS.map(([dq,dr])=>getHex(h.q+dq,h.r+dr)).filter(n=>n&&n.estado==="incorporado");}
 function podeIncorporar(h){
   if(!h||h.estado!=="explorado")return{ok:false,motivo:"precisa ser explorado primeiro"};
@@ -844,6 +848,22 @@ function dailyIncome(){return attrTotal("economia")*ESTACOES[estacaoAtualIdx()][
 const FATOR_CONSUMO_POPULACAO=0.3;
 function custoUpkeepPropriedades(){return S.ativos.reduce((s,o)=>{const a=ATIVOS.find(x=>x.id===o.id);return s+(a&&a.upkeep?a.upkeep*o.nivel:0);},0);}
 function custoSustento(){return custoUpkeepPropriedades()+populacaoLivre()*FATOR_CONSUMO_POPULACAO;}
+/* Avança as obras em andamento (construção nova ou evolução) — só quem tem gente alocada
+   avança 1 dia; sem trabalhador, a obra fica parada esperando mão de obra. Ao terminar,
+   nivel sobe (primeira construção: 0→1) e a construção nova ganha o badge ⌂ na capital. */
+function avancarObras(){
+  S.ativos.forEach(o=>{
+    if(!o.obra)return;
+    if((o.trabalhadores||[]).length<1)return;
+    o.obra.diasRestantes--;
+    if(o.obra.diasRestantes<=0){
+      const eraEvolucao=o.obra.evolucao,a=ATIVOS.find(x=>x.id===o.id);
+      o.nivel++;o.obra=null;
+      if(!eraEvolucao){const cap=getHex(0,0);if(cap&&!cap.constr.includes(o.id))cap.constr.push(o.id);}
+      feedPush(`${a?a.nome:"Propriedade"} ${eraEvolucao?`concluiu a evolução para nível ${o.nivel}`:"terminou de ser construída"}.`);
+    }
+  });
+}
 function feedPush(txt){S.feed=S.feed||[];S.feed.unshift({dia:S.dias,txt});if(S.feed.length>30)S.feed.pop();}
 const CRESCIMENTO_CADA=30; // dias entre tentativas de crescimento populacional
 function avancarDias(n){
@@ -852,6 +872,7 @@ function avancarDias(n){
     const bruto=dailyIncome(),sust=custoSustento();
     S.med.tesouro=Math.max(0,S.med.tesouro+bruto-sust);
     S.ativos.forEach(o=>{(o.trabalhadores||[]).forEach(t=>t.dias++);});
+    avancarObras();
     if(S.dias%EVENTO_CADA===0){dispararEvento();novidadeInfluencia();}
     if(S.dias%S.diasPorEstacao===0)eventoDeEstacao();
     if(S.dias%CRESCIMENTO_CADA===0)tentarCrescimentoPopulacao();
@@ -928,13 +949,22 @@ function decidir(id,idx){if(bloqueadoLeitura())return;const c=S.pendentes.find(x
   const op=c.decisao.opcoes[idx];aplicar(op.efeito,DIFICULDADE[S.dificuldade].recompensa);
   c._escolhido=op.label;S.pendentes=S.pendentes.filter(x=>x.id!==id);salvar();render();
   const el=document.querySelector(`[data-card="${id}"] .opts`);if(el)el.outerHTML=`<div class="resolved">✓ ${op.label}</div>`;}
+/* Tempo de obra proporcional ao custo (1 dia a cada 5 de custo/gasto, mínimo 1) — uma
+   Taverna (20) leva ~4 dias, um Forte (40) leva ~8. Só corre enquanto a propriedade tem
+   ao menos 1 trabalhador alocado (ver avancarObras/alocarTrabalhador): compra ou evolução
+   fica pendente, "parada no canteiro", até alguém ser colocado pra tocar a obra. */
+function diasDeObra(custo){return Math.max(1,Math.round(custo/5));}
 function comprarAtivo(id){if(bloqueadoLeitura())return;const a=ATIVOS.find(x=>x.id===id);if(!a)return;
   if(a.reqAttr){for(const [k,v] of Object.entries(a.reqAttr))if(attrTotal(k)<v){flashHint(`Requer ${labelCurto(k)} ${v}+ para ${a.nome}.`);return;}}
   if(S.med.tesouro<a.custo){flashHint("Tesouro insuficiente.");return;}
   // Bônus (a.mods) não é somado de forma permanente: só conta enquanto a propriedade tem
   // mão de obra alocada (ver propBonus/attrTotal/medTotal). Aloque população pra ativar.
-  S.med.tesouro-=a.custo;S.ativos.push({uid:uid(),id:a.id,nivel:1});
-  const cap=getHex(0,0);if(cap)cap.constr.push(a.id);salvar();render();}
+  // nivel começa em 0 (obra em andamento) — só vira 1 (e passa a valer/aparecer como pronta)
+  // quando a construção termina, ver avancarObras().
+  S.med.tesouro-=a.custo;
+  const diasTotal=diasDeObra(a.custo);
+  S.ativos.push({uid:uid(),id:a.id,nivel:0,trabalhadores:[],obra:{diasTotal,diasRestantes:diasTotal,evolucao:false}});
+  salvar();render();}
 
 /* ============ RENDER ============ */
 /* Território é derivado: quantos hexes o reino assentou de fato — não se compra. */
@@ -1200,8 +1230,8 @@ function addCharAleatorio(sugestao){
   if(bloqueadoLeitura())return;
   if(S.personagens.length>=aventureirosMax()){flashHint("Sem aventureiros disponíveis — aumente População ou construa propriedades.");return;}
   S.personagens.push({id:uid(),nome:pick(NOMES_PESSOA),rank:"",info:sugestao||pick(INFO_PESSOA),recursos:0,vida:10,vidaMax:10,funcao:"",notas:"",tags:pick(TAGS_PESSOA),expedicaoId:null,armas:[],itensPessoais:[]});salvar();render();}
-function propsComRecruta(){const m=new Map();S.ativos.forEach(o=>{const a=ATIVOS.find(x=>x.id===o.id);if(a&&a.recruta&&!m.has(a.id))m.set(a.id,a);});return[...m.values()];}
-function aventureirosMax(){let n=2+Math.floor(attrTotal("populacao")/2);S.ativos.forEach(o=>{const a=ATIVOS.find(x=>x.id===o.id);if(a&&a.recruta)n+=1;});return n;}
+function propsComRecruta(){const m=new Map();S.ativos.forEach(o=>{const a=ATIVOS.find(x=>x.id===o.id);if(a&&a.recruta&&propPronta(o)&&!m.has(a.id))m.set(a.id,a);});return[...m.values()];}
+function aventureirosMax(){let n=2+Math.floor(attrTotal("populacao")/2);S.ativos.forEach(o=>{const a=ATIVOS.find(x=>x.id===o.id);if(a&&a.recruta&&propPronta(o))n+=1;});return n;}
 
 /* ===== MÃO DE OBRA =====
    Alocar 1 população a uma propriedade não é "1 pessoa" — representa uma família/agregado
@@ -1251,11 +1281,14 @@ function formarAventureiro(propUid,workerId){
   salvar();render();
 }
 function evoluirPropriedade(u){if(bloqueadoLeitura())return;const o=S.ativos.find(x=>x.uid===u);if(!o)return;const a=ATIVOS.find(x=>x.id===o.id);if(!a)return;
+  if(o.obra){flashHint("Esta propriedade já está em obras.");return;}
   const custo=30*o.nivel;if(S.med.tesouro<custo){flashHint("Tesouro insuficiente ("+custo+").");return;}
-  S.med.tesouro-=custo;o.nivel++;
-  // Nível maior escala o bônus (a.mods × nível) só enquanto a propriedade estiver com
-  // mão de obra alocada — ver propBonus(). Nada é somado de forma permanente aqui.
-  logClear();logBeat("Propriedade",`${a.nome} evoluiu para nível ${o.nivel}. Bônus escala com o nível (ativo enquanto houver mão de obra alocada).`);salvar();render();}
+  S.med.tesouro-=custo;
+  // Nível só sobe quando a obra termina (avancarObras) — até lá a propriedade segue
+  // funcionando no nível atual, só o próximo nível fica pendente de mão de obra + dias.
+  const diasTotal=diasDeObra(custo);
+  o.obra={diasTotal,diasRestantes:diasTotal,evolucao:true};
+  logClear();logBeat("Propriedade",`${a.nome} iniciou obras de evolução (${diasTotal}d de obra, precisa de mão de obra alocada pra avançar).`);salvar();render();}
 function destinoOpts(){
   let out=`<option value="">Reino (dia a dia)</option>`;
   if(S.expedicoes.length)out+=`<optgroup label="Expedições">`+S.expedicoes.map(e=>`<option value="exp:${e.id}">${esc(e.nome)}</option>`).join("")+`</optgroup>`;
@@ -1280,7 +1313,7 @@ function renderLojaHTML(o,a){
   </div>`;
 }
 function renderComercio(){const box=document.getElementById("comercio");if(!box)return;
-  const comLoja=S.ativos.filter(o=>{const a=ATIVOS.find(x=>x.id===o.id);return a&&a.loja;});
+  const comLoja=S.ativos.filter(o=>{const a=ATIVOS.find(x=>x.id===o.id);return a&&a.loja&&propPronta(o);});
   if(!comLoja.length){box.innerHTML=`<span class="hint" style="margin:0">Nenhuma propriedade com loja ainda (Taverna, Ferreiro, Cabana do Caçador...).</span>`;return;}
   box.innerHTML=comLoja.map(o=>{const a=ATIVOS.find(x=>x.id===o.id);
     return `<div class="prop" style="display:block"><div class="pn" style="margin-bottom:6px">${a.nome} <span class="pnv">Nível ${o.nivel}</span></div>
@@ -1311,21 +1344,30 @@ function renderPropriedades(){const box=document.getElementById("props");if(!box
   if(!S.ativos.length){box.innerHTML=`<span class="hint" style="margin:0">Nenhuma propriedade ainda. Compre na loja acima; elas aparecem aqui e podem evoluir.</span>`;return;}
   box.innerHTML=S.ativos.map(o=>{const a=ATIVOS.find(x=>x.id===o.id);if(!a)return"";
     const ativo=(o.trabalhadores||[]).length>0;
+    const emObra=!!o.obra;
+    let obraHtml="";
+    if(emObra){
+      const parado=!ativo;
+      obraHtml=`<div class="pm" style="color:var(--warn)">🚧 ${o.obra.evolucao?`Em obras (evoluindo p/ nível ${o.nivel+1})`:"Em construção"}: ${o.obra.diasRestantes}/${o.obra.diasTotal}d restantes
+        ${parado?' · <span style="color:var(--bad)">parada — aloque mão de obra pra avançar</span>':""}</div>`;
+    }
     const mods=Object.entries(a.mods).map(([k,v])=>`${labelCurto(k)} +${v*o.nivel}`).join(" · ");
-    const modsHtml=`<span style="${ativo?"":"opacity:.45;text-decoration:line-through"}">${mods}</span>`+
-      (ativo?"":' <span style="color:var(--warn)">— inativo, aloque população pra ativar</span>');
+    const modsHtml=o.nivel<1?`<span style="opacity:.45">ainda não construída</span>`
+      :`<span style="${ativo?"":"opacity:.45;text-decoration:line-through"}">${mods}</span>`+
+        (ativo?"":' <span style="color:var(--warn)">— inativo, aloque população pra ativar</span>');
     return `<div class="prop"><div class="pimg"><span class="ph">img/assets/${a.img}</span><img src="img/assets/${a.img}" onerror="this.remove()"></div>
       <div class="pb"><div class="pn">${a.nome} <span class="pnv">Nível ${o.nivel}</span></div>
-      <div class="pm">${modsHtml}${a.instr?" · ⚑ "+a.instrTxt:""}${a.cap?" · ⚒ "+a.capTxt:""}${a.recruta?" · ♟ treina: "+a.recruta.sugestao:""}</div>
-      <button class="buy" onclick="evoluirPropriedade('${o.uid}')">Evoluir · ${30*o.nivel}</button>
+      ${obraHtml}
+      <div class="pm">${modsHtml}${o.nivel>=1?`${a.instr?" · ⚑ "+a.instrTxt:""}${a.cap?" · ⚒ "+a.capTxt:""}${a.recruta?" · ♟ treina: "+a.recruta.sugestao:""}`:""}</div>
+      <button class="buy" onclick="evoluirPropriedade('${o.uid}')" ${emObra?"disabled":""}>Evoluir · ${30*o.nivel}</button>
       ${especialBtnHTML(a,o)}
       ${renderMaoDeObra(o,a)}
-      ${a.loja?`<div class="hint" style="margin:6px 0 0">🛒 loja disponível na aba Comércio</div>`:""}</div></div>`;}).join("");}
+      ${a.loja&&o.nivel>=1?`<div class="hint" style="margin:6px 0 0">🛒 loja disponível na aba Comércio</div>`:""}</div></div>`;}).join("");}
 /* Habilidades ativas das propriedades especiais — custam Tesouro na hora, acionadas pelo jogador
    (não são passivas nem automáticas): previsão do tempo, batedor e contatos da guilda. */
 const ESPECIAL_CUSTO={previsao:5,batedor:8,sitio:12};
 function especialBtnHTML(a,o){
-  if(!a.especial)return"";
+  if(!a.especial||!propPronta(o))return"";
   const custo=ESPECIAL_CUSTO[a.especial]||0;
   const rotulo={previsao:"🔮 Previsão do tempo",batedor:"🧭 Enviar batedor",sitio:"🗺 Consultar contatos"}[a.especial]||"Usar";
   const fn={previsao:"usarPrevisaoTempo",batedor:"usarBatedorPosto",sitio:"usarContatosGuilda"}[a.especial];
