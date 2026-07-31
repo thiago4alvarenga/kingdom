@@ -382,22 +382,26 @@ const BARALHOS={
       efeito:{moral:-1},sitio:{tipo:"ameaca",nome:"Foco de Revolta",txt:"Rebeldes entrincheirados exigem ser ouvidos.",req:{attr:"influencia",val:4},recomp:{ameaca:-1,ordem:1,moral:1}}}]};
 
 /* Ativos: mods (atributos) + instr (instrumento de expedição) */
+/* upkeep = gasto diário de Tesouro por nível (só nas que não geram Economia — soldados, clero,
+   estudiosos e a equipe do hospital não trabalham a terra nem o comércio, mas ainda comem e custam). */
 const ATIVOS=[
   {id:"fazendas",nome:"Fazendas",img:"fazendas.jpg",custo:20,mods:{economia:1,populacao:1}},
   {id:"taverna",nome:"Taverna",img:"taverna.jpg",custo:20,mods:{fama:1,economia:1},loja:"taverna"},
-  {id:"forte",nome:"Forte",img:"forte.jpg",custo:40,mods:{militar:2,moral:1}},
-  {id:"quartel",nome:"Quartel",img:"quartel.jpg",custo:35,mods:{militar:2},reqAttr:{militar:2},recruta:{sugestao:"soldado / combatente treinado"}},
+  {id:"forte",nome:"Forte",img:"forte.jpg",custo:40,mods:{militar:2,moral:1},upkeep:1.5},
+  {id:"quartel",nome:"Quartel",img:"quartel.jpg",custo:35,mods:{militar:2},reqAttr:{militar:2},recruta:{sugestao:"soldado / combatente treinado"},upkeep:1.2},
   {id:"porto",nome:"Porto",img:"porto.jpg",custo:35,mods:{economia:1},instr:"embarcacao",instrTxt:"libera transporte por embarcação",reqAttr:{economia:4}},
   {id:"estabulo",nome:"Estábulos",img:"estabulo.jpg",custo:25,mods:{militar:1,populacao:1},instr:"montaria",instrTxt:"libera transporte montado",reqAttr:{populacao:3}},
   {id:"mina",nome:"Mineração",img:"mina.jpg",custo:30,mods:{economia:2}},
   {id:"ferreiro",nome:"Ferreiro",img:"ferreiro.jpg",custo:25,mods:{militar:1,economia:1},reqAttr:{militar:1},loja:"ferreiro"},
   {id:"cabana_cacador",nome:"Cabana do Caçador",img:"cabana_cacador.jpg",custo:22,mods:{militar:1},reqAttr:{populacao:2},recruta:{sugestao:"caçador / atirador"},loja:"cabana_cacador"},
-  {id:"guilda",nome:"Guilda",img:"guilda.jpg",custo:30,mods:{influencia:1,economia:1},instr:"cartografia",instrTxt:"mapas: menos risco de encontro",reqAttr:{economia:3,influencia:1},recruta:{sugestao:"explorador / batedor"}},
+  {id:"guilda",nome:"Guilda",img:"guilda.jpg",custo:30,mods:{influencia:1,economia:1},instr:"cartografia",instrTxt:"mapas: menos risco de encontro",reqAttr:{economia:3,influencia:1},recruta:{sugestao:"explorador / batedor"},especial:"sitio"},
   {id:"guilda_anoes",nome:"Guilda de Anões",img:"anoes.jpg",custo:40,mods:{economia:1,militar:1},cap:"mineracao",capTxt:"permite assentar montanhas",reqAttr:{economia:5,militar:2},recruta:{sugestao:"minerador / engenheiro"}},
   {id:"herbalista",nome:"Herbalista",img:"herbalista.jpg",custo:22,mods:{populacao:1},instr:"remedios",instrTxt:"remédios: reduz risco de encontro",reqAttr:{populacao:3},recruta:{sugestao:"curandeiro / herbalista"}},
-  {id:"templo",nome:"Templo",img:"templo.jpg",custo:25,mods:{influencia:1,moral:1},recruta:{sugestao:"monge / místico devoto"}},
-  {id:"biblioteca",nome:"Biblioteca",img:"biblioteca.jpg",custo:28,mods:{influencia:1},reqAttr:{economia:4},recruta:{sugestao:"mago / estudioso arcano"}},
-  {id:"hospital",nome:"Hospital",img:"hospital.jpg",custo:30,mods:{populacao:1,moral:1}}];
+  {id:"templo",nome:"Templo",img:"templo.jpg",custo:25,mods:{influencia:1,moral:1},recruta:{sugestao:"monge / místico devoto"},upkeep:0.6},
+  {id:"biblioteca",nome:"Biblioteca",img:"biblioteca.jpg",custo:28,mods:{influencia:1},reqAttr:{economia:4},recruta:{sugestao:"mago / estudioso arcano"},upkeep:1},
+  {id:"hospital",nome:"Hospital",img:"hospital.jpg",custo:30,mods:{populacao:1,moral:1},upkeep:1},
+  {id:"torre_mago",nome:"Torre do Mago",img:"torre_mago.jpg",custo:45,mods:{influencia:1},reqAttr:{influencia:2},recruta:{sugestao:"aprendiz de mago"},upkeep:1.4,especial:"previsao"},
+  {id:"posto_avancado",nome:"Posto Avançado",img:"posto_avancado.jpg",custo:32,mods:{militar:1},reqAttr:{populacao:2},recruta:{sugestao:"batedor / vigia"},especial:"batedor"}];
 
 /* ===== LOJAS =====
    Catálogo padrão sugestivo (RPG medieval estilo D&D) para propriedades de serviço.
@@ -497,7 +501,7 @@ function getExp(id){return S.expedicoes.find(x=>x.id===id);}
 let S=carregar()||estadoInicial();
 let selOrigem=null,selHex=null,expAtiva=null,modoMestre=false;
 /* Tema é preferência de tela, não do reino — fica fora de S, salvo à parte. */
-let TEMA=(function(){try{return localStorage.getItem("kingdom_theme")||"dark";}catch(e){return "dark";}})();
+let TEMA=(function(){try{return localStorage.getItem("kingdom_theme")||"light";}catch(e){return "light";}})();
 function aplicarTema(){
   document.body.classList.toggle("light",TEMA==="light");
   const b=document.getElementById("btnTema");if(b)b.textContent=TEMA==="light"?"☀ Claro":"🌙 Escuro";
@@ -526,7 +530,74 @@ function getHex(q,r){return S.hexes.find(h=>h.q===q&&h.r===r);}
 function hexDist(a,b){return(Math.abs(a.q-b.q)+Math.abs(a.r-b.r)+Math.abs(a.q+a.r-b.q-b.r))/2;}
 function terrenoAleatorio(){const ks=Object.keys(TERRENOS).filter(k=>k!=="desconhecido");return ks[Math.floor(Math.random()*ks.length)];}
 const MAP_R0=4,MAX_R=9;
-function novoHex(q,r){return {q,r,terreno:terrenoAleatorio(),estado:"oculto",capital:false,constr:[],sitio:null,nota:"",encontro:"",militarLocal:1};}
+/* Terreno coerente (task #105): antes cada hex sorteava seu tipo sozinho, o que jogava "costa"
+   solta no meio do continente sem nenhum mar por perto. Agora, na fundação, geramos o mapa
+   inteiro (raio MAX_R) de uma vez: o litoral vira uma faixa contígua de um lado só (borda
+   ondulada via seno, não hexes soltos), montanha/floresta/pântano/estepe nascem em blocos
+   (seeds + raio, com pântano puxado pra perto do litoral) e campo é o preenchimento padrão.
+   1-2 rios nascem numa montanha/floresta e correm até tocar o mar ou um pântano.
+   Guardado em S.terrenoMap/S.rioSet pra novoHex() só consultar, já que os hexes são criados
+   sob demanda (ensureHex) conforme o mapa é revelado — não dá pra gerar tudo de uma vez sem
+   isso. Saves de reinos já fundados antes desta mudança mantêm o mapa antigo (sem terrenoMap).*/
+function hashNoise(a,b,seed){const v=Math.sin(a*127.1+b*311.7+seed*74.7)*43758.5453;return v-Math.floor(v);}
+function gerarMapaTerrenos(origemTerreno){
+  const dirMar=DIRS[Math.floor(Math.random()*6)];
+  const perpVec=[dirMar[1],-dirMar[0]];
+  const baseThreshold=origemTerreno==="costa"?1:(MAX_R-3);
+  const seed1=Math.random()*10,seed2=Math.random()*10;
+  const proj=(q,r)=>q*dirMar[0]+r*dirMar[1];
+  const perp=(q,r)=>q*perpVec[0]+r*perpVec[1];
+  const thresholdEm=(q,r)=>{const p=perp(q,r);return baseThreshold+1.6*Math.sin(p*0.5+seed1)+0.8*Math.sin(p*1.3+seed2);};
+  const ehCosta=(q,r)=>proj(q,r)>=thresholdEm(q,r);
+
+  const todos=[];
+  for(let q=-MAX_R;q<=MAX_R;q++)for(let r=-MAX_R;r<=MAX_R;r++)if(Math.abs(q+r)<=MAX_R)todos.push({q,r});
+
+  function achaSeed(cond,tentativas){
+    for(let i=0;i<tentativas;i++){const c=todos[Math.floor(Math.random()*todos.length)];if(!ehCosta(c.q,c.r)&&cond(c))return c;}
+    return todos.find(c=>!ehCosta(c.q,c.r))||todos[0];
+  }
+  const seedsMontanha=[achaSeed(c=>proj(c.q,c.r)<baseThreshold-3,40),achaSeed(c=>proj(c.q,c.r)<baseThreshold-3,40)];
+  const seedsFloresta=[achaSeed(()=>true,40),achaSeed(()=>true,40)];
+  const seedsPantano=[achaSeed(c=>{const t=thresholdEm(c.q,c.r),p=proj(c.q,c.r);return p<t&&p>t-3;},40)];
+  const seedsEstepe=[achaSeed(()=>true,40)];
+  const blocos=[
+    ...seedsMontanha.map(s=>({...s,terreno:"montanha",raio:2.5})),
+    ...seedsFloresta.map(s=>({...s,terreno:"floresta",raio:2.5})),
+    ...seedsPantano.map(s=>({...s,terreno:"pantano",raio:2})),
+    ...seedsEstepe.map(s=>({...s,terreno:"estepe",raio:2.5}))];
+
+  const mapa={};
+  todos.forEach(({q,r})=>{
+    const key=q+","+r;
+    if(ehCosta(q,r)){mapa[key]="costa";return;}
+    let melhor=null,melhorD=Infinity;
+    blocos.forEach((b,i)=>{const d=hexDist({q,r},b)+(hashNoise(q,r,i)-0.5)*1.2;if(d<b.raio&&d<melhorD){melhorD=d;melhor=b.terreno;}});
+    mapa[key]=melhor||"campo";
+  });
+
+  const rioSet={};
+  const nascentes=[...seedsMontanha,...seedsFloresta];
+  const nRios=Math.random()<0.5?1:2;
+  for(let n=0;n<nRios&&n<nascentes.length;n++){
+    let cur={q:nascentes[n].q,r:nascentes[n].r};
+    for(let i=0;i<24;i++){
+      rioSet[cur.q+","+cur.r]=true;
+      if(ehCosta(cur.q,cur.r)||mapa[cur.q+","+cur.r]==="pantano")break;
+      const cands=DIRS.map(([dq,dr])=>({q:cur.q+dq,r:cur.r+dr})).filter(c=>Math.max(Math.abs(c.q),Math.abs(c.r),Math.abs(c.q+c.r))<=MAX_R);
+      if(!cands.length)break;
+      cands.sort((a,b)=>proj(b.q,b.r)-proj(a.q,a.r));
+      cur=cands[Math.random()<0.65?0:Math.min(1,cands.length-1)];
+    }
+  }
+  S.terrenoMap=mapa;S.rioSet=rioSet;S.marDir=dirMar;
+}
+function novoHex(q,r){
+  const key=q+","+r;
+  const terreno=(S.terrenoMap&&S.terrenoMap[key])||terrenoAleatorio();
+  const rio=!!(S.rioSet&&S.rioSet[key]);
+  return {q,r,terreno,rio,estado:"oculto",capital:false,constr:[],sitio:null,nota:"",encontro:"",militarLocal:1};
+}
 function ensureHex(q,r){if(Math.max(Math.abs(q),Math.abs(r),Math.abs(q+r))>MAX_R)return getHex(q,r);let h=getHex(q,r);if(!h){h=novoHex(q,r);S.hexes.push(h);}return h;}
 function instrumentos(){const s=new Set();S.ativos.forEach(o=>{const a=ATIVOS.find(x=>x.id===o.id);if(a&&a.instr)s.add(a.instr);});return s;}
 function capacidades(){const s=new Set();S.ativos.forEach(o=>{const a=ATIVOS.find(x=>x.id===o.id);if(a&&a.cap)s.add(a.cap);});return s;}
@@ -572,14 +643,16 @@ const WEATHER_TERRENO_PESO={
   montanha:{frio:2,vento:1},pantano:{chuva:2},costa:{chuva:1,vento:1},
   estepe:{vento:1,claro:1},campo:{claro:1},floresta:{chuva:1}
 };
-function pesoClima(estIdx,terreno){
+const WEATHER_RIO_NUDGE={chuva:1}; // hex com rio soma isso ao peso, além do peso do terreno
+function pesoClima(estIdx,terreno,rio){
   const base={...WEATHER_ESTACAO_PESO[ESTACOES[estIdx][0]]};
   const nudge=WEATHER_TERRENO_PESO[terreno]||{};
   Object.keys(nudge).forEach(k=>{base[k]=(base[k]||0)+nudge[k];});
+  if(rio)Object.keys(WEATHER_RIO_NUDGE).forEach(k=>{base[k]=(base[k]||0)+WEATHER_RIO_NUDGE[k];});
   return base;
 }
-function sortearClima(estIdx,terreno){
-  const pesos=pesoClima(estIdx,terreno);
+function sortearClima(estIdx,terreno,rio){
+  const pesos=pesoClima(estIdx,terreno,rio);
   const entries=Object.entries(pesos).filter(([,w])=>w>0);
   const total=entries.reduce((s,[,w])=>s+w,0);
   let r=Math.random()*total;
@@ -588,7 +661,7 @@ function sortearClima(estIdx,terreno){
 }
 function climaHex(h){
   if(!h)return null;
-  if(h.climaDia!==S.dias){h.climaTipo=sortearClima(estacaoAtualIdx(),h.terreno);h.climaDia=S.dias;}
+  if(h.climaDia!==S.dias){h.climaTipo=sortearClima(estacaoAtualIdx(),h.terreno,h.rio);h.climaDia=S.dias;}
   return{tipo:h.climaTipo,...WEATHER_TIPOS[h.climaTipo]};
 }
 function climaIconHTML(c){return c?`<img src="img/ui/${c.icon}" alt="" style="width:15px;height:15px;vertical-align:-3px;object-fit:contain;opacity:.9">`:"";}
@@ -617,6 +690,7 @@ function fundar(){
   S.attr={...o.attr};S.origem=o.id;
   S.nome=(document.getElementById("nomeInput").value||"Reino").trim()||"Reino";
   S.hexes=[];
+  gerarMapaTerrenos(o.terreno);
   for(let q=-MAP_R0;q<=MAP_R0;q++)for(let r=-MAP_R0;r<=MAP_R0;r++)if(Math.abs(q+r)<=MAP_R0)ensureHex(q,r);
   const cap=getHex(0,0);cap.terreno=o.terreno;cap.estado="incorporado";cap.capital=true;cap.nivelAssent=2;
   DIRS.forEach(([dq,dr])=>{const h=getHex(dq,dr);if(h)h.estado="conhecido";});
@@ -761,18 +835,27 @@ const EVENTOS_ESTACAO={
 function estacaoAtualIdx(){return Math.floor(S.dias/S.diasPorEstacao)%4;}
 function anoAtual(){return Math.floor(S.dias/(S.diasPorEstacao*4))+1;}
 function dailyIncome(){return attrTotal("economia")*ESTACOES[estacaoAtualIdx()][2];}
+/* Sustento diário: propriedades não-produtivas (militares, clero, estudiosos, curandeiros)
+   custam Tesouro por nível — quem trabalha a terra ou o comércio (Fazendas, Mina, Ferreiro etc.)
+   não entra aqui. Some a isso o consumo de população livre (não alocada em nenhuma propriedade):
+   gente que não produz ainda come e precisa de recursos do reino. Calibrado por simulação
+   (task #101): 0.3/dia por família livre pesa pouco no verão mas aperta de verdade no inverno
+   se a população crescer sem reinvestimento — sem falência forçada num jogo passivo comum. */
+const FATOR_CONSUMO_POPULACAO=0.3;
+function custoUpkeepPropriedades(){return S.ativos.reduce((s,o)=>{const a=ATIVOS.find(x=>x.id===o.id);return s+(a&&a.upkeep?a.upkeep*o.nivel:0);},0);}
+function custoSustento(){return custoUpkeepPropriedades()+populacaoLivre()*FATOR_CONSUMO_POPULACAO;}
 function feedPush(txt){S.feed=S.feed||[];S.feed.unshift({dia:S.dias,txt});if(S.feed.length>30)S.feed.pop();}
 const CRESCIMENTO_CADA=30; // dias entre tentativas de crescimento populacional
 function avancarDias(n){
   for(let i=0;i<n;i++){
     S.dias++;
-    const bruto=dailyIncome(),sust=S.ativos.length*0.3;
+    const bruto=dailyIncome(),sust=custoSustento();
     S.med.tesouro=Math.max(0,S.med.tesouro+bruto-sust);
     S.ativos.forEach(o=>{(o.trabalhadores||[]).forEach(t=>t.dias++);});
     if(S.dias%EVENTO_CADA===0){dispararEvento();novidadeInfluencia();}
     if(S.dias%S.diasPorEstacao===0)eventoDeEstacao();
     if(S.dias%CRESCIMENTO_CADA===0)tentarCrescimentoPopulacao();
-    if(S.dias%DEFESA_LOCAL_CADA===0)checarDefesaAssentamentos();
+    if(S.dias%DEFESA_LOCAL_CADA===0){checarDefesaAssentamentos();checarPressaoAmeaca();}
     checarClimaAssentamentos();
   }
 }
@@ -815,12 +898,19 @@ function dispararEvento(){
 }
 function eventoDeEstacao(){
   const est=estacaoAtualIdx();
-  const pressao=pressaoAmeaca();
-  if(pressao>0){aplicar({ameaca:pressao});feedPush(`${pressao} sítio(s) de ameaça fora de proteção pressionam: +${pressao} Ameaça.`);}
-  else if(sitiosAmeaca()>0)feedPush(`Militar ${attrTotal("militar")} ≥ Ameaça ${medTotal("ameaca")}: assentamentos seguros seguem protegidos.`);
   let imTot=0;S.expedicoes.forEach(e=>{const hh=getHex(e.q,e.r);if(hexSeguro(hh)&&e.bolsa>0){const imp=Math.max(1,Math.round(e.bolsa*0.1));e.bolsa-=imp;S.med.tesouro+=imp;imTot+=imp;expLog(e,`Imposto/gastos: −${imp} à capital.`);}});
   if(imTot>0)feedPush(`Impostos e gastos deixaram +${imTot} de Recurso na capital.`);
   const se=EVENTOS_ESTACAO[ESTACOES[est][0]];if(se){aplicar(se.efeito,DIFICULDADE[S.dificuldade].recompensa);feedPush(`❄ ${ESTACOES[est][1]}: ${se.txt}`);}
+}
+/* Ameaça e Moral, checadas junto com a Defesa Local (semanal) — antes só rodava por estação
+   (a cada 90 dias por padrão), o que deixava a pressão rara demais pra ser um desafio de verdade.
+   Ameaça alta e sustentada também pesa sobre o povo: Moral cai enquanto ela ficar em 6+. */
+const AMEACA_MORAL_LIMIAR=6;
+function checarPressaoAmeaca(){
+  const pressao=pressaoAmeaca();
+  if(pressao>0){aplicar({ameaca:pressao});feedPush(`${pressao} sítio(s) de ameaça fora de proteção pressionam: +${pressao} Ameaça.`);}
+  else if(sitiosAmeaca()>0)feedPush(`Militar ${attrTotal("militar")} ≥ Ameaça ${medTotal("ameaca")}: assentamentos seguros seguem protegidos.`);
+  if(medTotal("ameaca")>=AMEACA_MORAL_LIMIAR){aplicar({moral:-1});feedPush(`A Ameaça alta (${medTotal("ameaca")}) pesa sobre o povo: −1 Moral.`);}
 }
 /* Influência traz novidades: quanto mais conhecidos no reino maior, mais o mundo bate à porta. */
 function novidadeInfluencia(){
@@ -874,7 +964,11 @@ function render(){
     return `<div class="meter ${cls}"><div class="k">${lab}</div><div class="v ${vcls}">${val}${bonTxt}</div></div>`;}).join("");
   document.getElementById("clima").innerHTML=climaTexto();
   const metersConstruir=document.getElementById("metersConstruir");
-  if(metersConstruir)metersConstruir.innerHTML=`<div class="meter tesouro"><div class="k">Tesouro disponível</div><div class="v">${Math.round(S.med.tesouro)}</div></div>`;
+  if(metersConstruir){
+    const sustDia=Math.round(custoSustento()*10)/10;
+    metersConstruir.innerHTML=`<div class="meter tesouro"><div class="k">Tesouro disponível</div><div class="v">${Math.round(S.med.tesouro)}</div></div>
+      <div class="meter"><div class="k">Sustento diário</div><div class="v" style="font-size:15px">-${sustDia} <span style="color:var(--muted-tx);font-weight:400;font-size:11px">(propriedades + população livre)</span></div></div>`;
+  }
   document.getElementById("attrs").innerHTML=ATRIBUTOS.map(([k,lab])=>{
     const extra=k==="populacao"?` <span style="color:var(--muted-tx);font-weight:400">(livre: ${populacaoLivre()})</span>`:"";
     const mestreBtns=(k==="populacao"&&papel==="mestre")?`<span style="margin-left:6px"><button class="ghost" style="padding:0 6px;font-size:12px" onclick="ajustarPopulacaoManual(-1)">−</button><button class="ghost" style="padding:0 6px;font-size:12px" onclick="ajustarPopulacaoManual(1)">+</button></span>`:"";
@@ -946,6 +1040,7 @@ function renderMapa(){const svg=document.getElementById("hexmap");if(!svg)return
     if(h.estado==="incorporado"&&!h.capital)out+=`<text class="hexbadge" x="${cx}" y="${(cy-HEXSIZE*0.4).toFixed(1)}" text-anchor="middle" style="font-size:11px;fill:#e8dcc0">⌂${h.nivelAssent||1}</text>`;
     if(h.sitio){const g=h.sitio.tipo==="ameaca"?"!":(h.sitio.tipo==="recurso"?"✦":"◆");const col=h.sitio.tipo==="ameaca"?"#e07a5f":"#e7c34a";
       out+=`<text class="hexbadge" x="${cx-HEXSIZE*0.5}" y="${cy-HEXSIZE*0.38}" text-anchor="middle" style="fill:${col};font-size:15px">${g}</text>`;}
+    if(h.rio&&showT)out+=`<text class="hexbadge" x="${cx-HEXSIZE*0.5}" y="${(cy+HEXSIZE*0.62).toFixed(1)}" text-anchor="middle" style="fill:#6fb6e0;font-size:13px">～</text>`;
     if(modoMestre&&(h.nota||h.encontro))out+=`<text class="hexbadge" x="${cx+HEXSIZE*0.45}" y="${(cy+HEXSIZE*0.6).toFixed(1)}" text-anchor="middle" style="fill:#efe7d8">✎</text>`;});
   const drawn=new Set();
   S.hexes.filter(h=>h.estado==="incorporado").forEach(h=>{DIRS.forEach(([dq,dr])=>{const n=getHex(h.q+dq,h.r+dr);
@@ -975,7 +1070,7 @@ function renderExpInfo(){
     box.innerHTML=t;
     if(ativa&&hexDist(getHex(ativa.q,ativa.r),h)===1)box.innerHTML=t+` <br><span class="req">(não se viaja direto ao oculto)</span>`;
     return;}
-  let s=`<b>${TERRENOS[h.terreno].nome}</b>${h.capital?" · capital ★":" · "+estadoLabel(h.estado)}`;
+  let s=`<b>${TERRENOS[h.terreno].nome}</b>${h.rio?" · 🌊 rio":""}${h.capital?" · capital ★":" · "+estadoLabel(h.estado)}`;
   const climaAqui=climaHex(h);
   s+=` · ${climaIconHTML(climaAqui)} ${climaAqui.nome}`;
   if(h.constr.length)s+=`<br>Construções: ${h.constr.map(id=>{const a=ATIVOS.find(x=>x.id===id);return a?a.nome:id;}).join(", ")}`;
@@ -983,7 +1078,7 @@ function renderExpInfo(){
     +`<br>Militar local: <b>${h.militarLocal||1}</b> ${(h.militarLocal||1)<medTotal("ameaca")?'<span style="color:var(--warn)">(abaixo da Ameaça do reino)</span>':'<span style="color:var(--good)">(segura a Ameaça do reino)</span>'}`;
   const aqui=expNoHex(h.q,h.r);
   if(aqui)s+=`<br><span style="color:var(--accent)">◉ ${esc(aqui.nome)} está aqui</span>`;
-  if(h.sitio)s+=`<br><span class="req">${h.sitio.tipo==="ameaca"?"⚠":"✦"} ${h.sitio.nome}:</span> ${h.sitio.txt}${h.sitio.req?` <br>Dica: ${reqTexto(h.sitio.req)} ajuda aqui (não é obrigatório — quem resolve é a expedição).`:""} Recompensa: ${fmtEfeito(h.sitio.recomp,true)}`;
+  if(h.sitio)s+=`<br><span class="req">${h.sitio.tipo==="ameaca"?"⚠":"✦"} ${h.sitio.nome}:</span> ${h.sitio.txt}${h.sitio.req?` <br>Dica: ${reqTexto(h.sitio.req)} ajuda aqui (não é obrigatório — quem resolve é a expedição).`:""}`;
   let btns="";
   // mover expedição ativa para cá (adjacente)
   if(ativa&&hexDist(getHex(ativa.q,ativa.r),h)===1){
@@ -1006,15 +1101,29 @@ function renderExpInfo(){
   box.innerHTML=s+(btns?`<div>${btns}</div>`:"")+spoiler;
 }
 function estadoLabel(e){return{conhecido:"conhecido",explorado:"explorado",incorporado:"incorporado"}[e]||e;}
+/* Chaves válidas de efeito (as mesmas que aplicar()/fmtEfeito entendem). */
+const EFEITO_CHAVES=["tesouro","moral","fama","ameaca","militar","economia","populacao","influencia"];
 function gmHexPanel(h){
   const climaAqui=climaHex(h);
-  let s=`<b>${TERRENOS[h.terreno].nome}</b> (${h.q},${h.r}) · ${estadoLabel(h.estado)}${h.capital?" · capital ★":""} · ${climaIconHTML(climaAqui)} ${climaAqui.nome}`;
-  if(h.sitio)s+=`<br>Sítio de carta: ${h.sitio.nome} (${h.sitio.tipo})`;
+  let s=`<b>${TERRENOS[h.terreno].nome}</b> (${h.q},${h.r})${h.rio?" · 🌊 rio":""} · ${estadoLabel(h.estado)}${h.capital?" · capital ★":""} · ${climaIconHTML(climaAqui)} ${climaAqui.nome}`;
+  if(h.sitio){
+    s+=`<br>Sítio de carta: ${h.sitio.nome} (${h.sitio.tipo})`;
+    s+=`<label class="gml">Recompensa (segredo — o jogador só vê o rumor, isto é só sugestão, edite à vontade)</label>`;
+    const recomp=h.sitio.recomp||{};
+    const linhas=Object.keys(recomp).map(k=>`<div class="trow"><span class="tag" style="width:90px">${labelCurto(k)}</span>
+      <input class="tn" type="number" step="1" style="width:70px" value="${recomp[k]}" onchange="setSitioRecompValor(${h.q},${h.r},'${k}',this.value)">
+      <button class="ghost" title="remover" onclick="delSitioRecompChave(${h.q},${h.r},'${k}')">✕</button></div>`).join("")||`<span class="hint" style="margin:0">nenhum efeito ainda</span>`;
+    const opcoes=EFEITO_CHAVES.filter(k=>!(k in recomp)).map(k=>`<option value="${k}">${labelCurto(k)}</option>`).join("");
+    s+=`<div class="maodeobra">${linhas}${opcoes?`<div class="trow"><select id="novoEfeitoChave_${h.q}_${h.r}">${opcoes}</select><button class="ghost" onclick="addSitioRecompChave(${h.q},${h.r},document.getElementById('novoEfeitoChave_${h.q}_${h.r}').value)">+ efeito</button></div>`:""}</div>`;
+  }
   s+=`<label class="gml">Descrição do hex (spoiler p/ jogadores)</label><textarea class="gmt" onchange="setHexCampo(${h.q},${h.r},'nota',this.value)">${esc(h.nota||"")}</textarea>`;
   s+=`<label class="gml">Encontro / segredo (oculto aos jogadores)</label><textarea class="gmt" onchange="setHexCampo(${h.q},${h.r},'encontro',this.value)">${esc(h.encontro||"")}</textarea>`;
   return s;
 }
 function setHexCampo(q,r,campo,val){if(papel!=="mestre")return;const h=getHex(q,r);if(!h)return;h[campo]=val;salvar();renderMapa();}
+function setSitioRecompValor(q,r,chave,val){if(papel!=="mestre")return;const h=getHex(q,r);if(!h||!h.sitio)return;h.sitio.recomp=h.sitio.recomp||{};h.sitio.recomp[chave]=parseFloat(val)||0;salvar();}
+function addSitioRecompChave(q,r,chave){if(papel!=="mestre"||!chave)return;const h=getHex(q,r);if(!h||!h.sitio)return;h.sitio.recomp=h.sitio.recomp||{};if(!(chave in h.sitio.recomp))h.sitio.recomp[chave]=1;salvar();renderExpInfo();}
+function delSitioRecompChave(q,r,chave){if(papel!=="mestre")return;const h=getHex(q,r);if(!h||!h.sitio||!h.sitio.recomp)return;delete h.sitio.recomp[chave];salvar();renderExpInfo();}
 function renderLegend(){const usados=[...new Set(S.hexes.filter(h=>h.estado!=="oculto").map(h=>h.terreno))];
   let out=usados.map(k=>`<div class="li"><span class="sw" style="background:${TERRENOS[k].cor}">${TERRENOS[k].sim}</span>${TERRENOS[k].nome}</div>`).join("");
   out+=`<div class="li"><span class="sw" style="background:#3a3630;color:#c9a24b">★</span>Capital</div>`;
@@ -1022,6 +1131,7 @@ function renderLegend(){const usados=[...new Set(S.hexes.filter(h=>h.estado!=="o
   out+=`<div class="li"><span class="sw" style="background:#3a3630;color:#e7c34a">✦</span>Sítio de recurso</div>`;
   out+=`<div class="li"><span class="sw" style="background:#3a3630;color:#e8dcc0">⌂</span>Assentamento (nível)</div>`;
   out+=`<div class="li"><span class="sw" style="background:#caa96a"></span>Estrada (território contíguo)</div>`;
+  if(S.hexes.some(h=>h.rio&&h.estado!=="oculto"))out+=`<div class="li"><span class="sw" style="background:#3a3630;color:#6fb6e0">～</span>Rio</div>`;
   document.getElementById("legend").innerHTML=out;}
 
 /* helpers */
@@ -1208,8 +1318,52 @@ function renderPropriedades(){const box=document.getElementById("props");if(!box
       <div class="pb"><div class="pn">${a.nome} <span class="pnv">Nível ${o.nivel}</span></div>
       <div class="pm">${modsHtml}${a.instr?" · ⚑ "+a.instrTxt:""}${a.cap?" · ⚒ "+a.capTxt:""}${a.recruta?" · ♟ treina: "+a.recruta.sugestao:""}</div>
       <button class="buy" onclick="evoluirPropriedade('${o.uid}')">Evoluir · ${30*o.nivel}</button>
+      ${especialBtnHTML(a,o)}
       ${renderMaoDeObra(o,a)}
       ${a.loja?`<div class="hint" style="margin:6px 0 0">🛒 loja disponível na aba Comércio</div>`:""}</div></div>`;}).join("");}
+/* Habilidades ativas das propriedades especiais — custam Tesouro na hora, acionadas pelo jogador
+   (não são passivas nem automáticas): previsão do tempo, batedor e contatos da guilda. */
+const ESPECIAL_CUSTO={previsao:5,batedor:8,sitio:12};
+function especialBtnHTML(a,o){
+  if(!a.especial)return"";
+  const custo=ESPECIAL_CUSTO[a.especial]||0;
+  const rotulo={previsao:"🔮 Previsão do tempo",batedor:"🧭 Enviar batedor",sitio:"🗺 Consultar contatos"}[a.especial]||"Usar";
+  const fn={previsao:"usarPrevisaoTempo",batedor:"usarBatedorPosto",sitio:"usarContatosGuilda"}[a.especial];
+  return `<button class="ghost" onclick="${fn}('${o.uid}')">${rotulo} · ${custo}</button>`;
+}
+function gastarTesouro(v){if(S.med.tesouro<v)return false;S.med.tesouro-=v;return true;}
+function usarPrevisaoTempo(uid){
+  if(bloqueadoLeitura())return;const o=S.ativos.find(x=>x.uid===uid);if(!o)return;
+  if(!gastarTesouro(ESPECIAL_CUSTO.previsao)){flashHint(`Tesouro insuficiente (${ESPECIAL_CUSTO.previsao} necessário).`);return;}
+  const cap=S.hexes.find(h=>h.capital)||S.hexes.find(h=>h.estado==="incorporado");
+  const terreno=cap?cap.terreno:"campo";
+  const pesos=pesoClima(estacaoAtualIdx(),terreno);
+  const total=Object.values(pesos).reduce((s,w)=>s+w,0)||1;
+  const partes=Object.entries(pesos).filter(([,w])=>w>0).sort((x,y)=>y[1]-x[1])
+    .map(([k,w])=>`${WEATHER_TIPOS[k].nome} ${Math.round(w/total*100)}%`).join(", ");
+  feedPush(`🔮 A Torre do Mago lê os ventos para ${ESTACOES[estacaoAtualIdx()][1]}: ${partes}. (previsão, não muda o clima real do dia)`);
+  salvar();render();
+}
+function usarBatedorPosto(uid){
+  if(bloqueadoLeitura())return;const o=S.ativos.find(x=>x.uid===uid);if(!o)return;
+  if(!gastarTesouro(ESPECIAL_CUSTO.batedor)){flashHint(`Tesouro insuficiente (${ESPECIAL_CUSTO.batedor} necessário).`);return;}
+  const alvo=hexOcultoDistante(1,2);
+  if(!alvo){feedPush("O batedor do Posto Avançado não acha nada novo perto — os arredores já são conhecidos.");salvar();render();return;}
+  alvo.estado="conhecido";
+  feedPush(`🧭 Um batedor do Posto Avançado retorna: um novo hex de ${TERRENOS[alvo.terreno].nome} aparece no mapa.`);
+  salvar();render();
+}
+function usarContatosGuilda(uid){
+  if(bloqueadoLeitura())return;const o=S.ativos.find(x=>x.uid===uid);if(!o)return;
+  if(!gastarTesouro(ESPECIAL_CUSTO.sitio)){flashHint(`Tesouro insuficiente (${ESPECIAL_CUSTO.sitio} necessário).`);return;}
+  const candidatos=[];Object.values(BARALHOS).forEach(b=>b.forEach(c=>{if(c.res==="sitio"&&c.sitio.tipo!=="ameaca")candidatos.push(c);}));
+  if(!candidatos.length){feedPush("A Guilda não tem pistas novas no momento.");salvar();render();return;}
+  const carta=candidatos[Math.floor(Math.random()*candidatos.length)];
+  const alvo=plantarSitio(carta);
+  if(alvo)feedPush(`🗺 Contatos da Guilda apontam algo em ${TERRENOS[alvo.terreno].nome}: rumor de "${alvo.sitio.nome}" — vale mandar uma expedição.`);
+  else feedPush("A Guilda não achou onde plantar a pista agora (mapa todo ocupado).");
+  salvar();render();
+}
 function setChar(id,campo,val){if(bloqueadoLeitura())return;const c=S.personagens.find(x=>x.id===id);if(!c)return;c[campo]=(campo==="expedicaoId"&&!val)?null:val;salvar();if(campo==="expedicaoId")render();}
 /* Troca de expedição é sempre agência do personagem: só sai de uma expedição em campo se
    estiver numa cidade/assentamento (incorporado) ou se topar com a nova expedição no mesmo
@@ -1291,6 +1445,40 @@ function renderChars(){
 function addExp(){if(bloqueadoLeitura())return;const id=uid();S.expedicoes.push({id,nome:nomeExpAleatorio(),q:0,r:0,transporte:"a pé",ritmo:"normal",bolsa:0,divida:0,dia:S.dias,diasUsados:0,itens:[],log:[]});expAtiva=id;salvar();render();}
 function addItem(id){if(bloqueadoLeitura())return;const e=getExp(id),v=prompt("Item / tesouro adquirido pela expedição:");if(!v||!v.trim())return;e.itens=e.itens||[];e.itens.push(v.trim());expLog(e,`Adquiriu: ${v.trim()}.`);salvar();render();}
 function delItem(id,i){if(bloqueadoLeitura())return;const e=getExp(id);if(e.itens)e.itens.splice(i,1);salvar();render();}
+/* Suprimentos: pensado pra alimentação e afins — planeja um total (ex: 10 rações) e vai
+   descontando manualmente a cada dia/refeição, em vez de ficar reescrevendo um item de texto livre. */
+function addSuprimento(id){
+  if(bloqueadoLeitura())return;const e=getExp(id);if(!e)return;
+  const nome=prompt("Suprimento (ex: Ração de viagem):","Ração de viagem");
+  if(!nome||!nome.trim())return;
+  const qtd=parseFloat(prompt(`Quantidade total planejada de "${nome.trim()}":`,"10"));
+  if(!qtd||qtd<=0)return;
+  e.suprimentos=e.suprimentos||[];
+  e.suprimentos.push({id:uid(),nome:nome.trim(),qtdTotal:qtd,qtd:qtd});
+  expLog(e,`Suprimento planejado: ${nome.trim()} (${qtd}).`);
+  salvar();render();
+}
+function ajustarSuprimento(id,supId,delta){
+  if(bloqueadoLeitura())return;const e=getExp(id);if(!e)return;
+  const s=(e.suprimentos||[]).find(x=>x.id===supId);if(!s)return;
+  s.qtd=Math.max(0,Math.min(s.qtdTotal,(Number(s.qtd)||0)+delta));
+  salvar();render();
+}
+function delSuprimento(id,supId){
+  if(bloqueadoLeitura())return;const e=getExp(id);if(!e)return;
+  e.suprimentos=(e.suprimentos||[]).filter(x=>x.id!==supId);
+  salvar();render();
+}
+function suprimentosHTML(e){
+  if(!e.suprimentos||!e.suprimentos.length)return'<span class="hint" style="margin:0">nenhum</span>';
+  return e.suprimentos.map(s=>{
+    const baixo=s.qtdTotal>0&&s.qtd<=s.qtdTotal*0.2;
+    return `<span class="it" style="${baixo?"color:var(--bad)":""}">${esc(s.nome)}: <b>${s.qtd}</b>/${s.qtdTotal}
+      <button title="consumir 1" onclick="ajustarSuprimento('${e.id}','${s.id}',-1)">−</button>
+      <button title="devolver 1" onclick="ajustarSuprimento('${e.id}','${s.id}',1)">+</button>
+      <button title="remover" onclick="delSuprimento('${e.id}','${s.id}')">✕</button></span>`;
+  }).join("");
+}
 function repassarCapital(id){if(bloqueadoLeitura())return;const e=getExp(id),a=pedeValor("Repassar quanto da bolsa à capital? (gastos na cidade / impostos)",Math.max(1,Math.floor((e.bolsa||0)*0.2)));if(!a)return;const v=Math.min(a,e.bolsa);if(v<=0){flashHint("Bolsa vazia.");return;}e.bolsa-=v;S.med.tesouro+=v;expLog(e,`Repassou ${v} à capital (gastos/impostos).`);salvar();render();}
 function setExp(id,campo,val){if(bloqueadoLeitura())return;const e=getExp(id);if(!e)return;e[campo]=val;salvar();render();}
 function delExp(id){if(bloqueadoLeitura())return;S.personagens.forEach(p=>{if(p.expedicaoId===id)p.expedicaoId=null;});S.expedicoes=S.expedicoes.filter(x=>x.id!==id);if(expAtiva===id)expAtiva=null;salvar();render();}
@@ -1321,6 +1509,7 @@ function renderExpes(){
       <div class="erow">Bolsa <b style="color:var(--accent)">${e.bolsa}</b> · Dívida c/ reino <b style="color:${e.divida>0?'var(--bad)':'var(--ink2)'}">${e.divida}</b></div>
       <div class="ebtns"><button onclick="aporte('${e.id}')">Aporte</button><button onclick="financiar('${e.id}')">Financiar</button><button onclick="emprestar('${e.id}')">Emprestar</button><button onclick="quitar('${e.id}')" ${e.divida>0?"":"disabled"}>Quitar</button><button onclick="gastoExp('${e.id}')">Gasto</button><button onclick="repassarCapital('${e.id}')" title="gastos na cidade / impostos">Repassar à capital</button></div>
       <div class="erow">Inventário: <span class="inv">${(e.itens&&e.itens.length)?e.itens.map((it,i)=>`<span class="it">${esc(it)}<button title="remover" onclick="delItem('${e.id}',${i})">✕</button></span>`).join(""):'<span class="hint" style="margin:0">vazio</span>'}</span> <button class="ghost" style="font-size:11px;padding:2px 7px" onclick="addItem('${e.id}')">+ item</button></div>
+      <div class="erow">Suprimentos: <span class="inv">${suprimentosHTML(e)}</span> <button class="ghost" style="font-size:11px;padding:2px 7px" onclick="addSuprimento('${e.id}')">+ suprimento</button></div>
       <div class="party">${party}</div>
       <div class="elogs">${logs}</div></div>`;}).join("");
 }
