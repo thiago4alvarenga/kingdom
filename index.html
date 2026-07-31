@@ -66,6 +66,11 @@
   .season-badge{text-align:right;font-size:13px;color:var(--ink2)}
   .season-badge b{color:var(--accent);font-size:16px;display:block}
   .btnicon{font-size:12px;padding:3px 8px;margin-left:8px;vertical-align:middle}
+  .kingtabs{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 10px}
+  .kingtab{font:inherit;font-family:var(--font-display);font-size:13px;letter-spacing:.3px;color:var(--ink2);
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 16px;cursor:pointer}
+  .kingtab:hover{border-color:var(--accent)}
+  .kingtab.on{background:var(--panel2);border-color:var(--accent);color:var(--accent);font-weight:600}
   .controls{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0;align-items:center}
   .controls .grp{display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);
     border-radius:10px;padding:6px 10px;font-size:13px;color:var(--ink2)}
@@ -249,41 +254,55 @@
       <span class="tag" id="syncStatus">nuvem: —</span>
     </div>
 
-    <div class="grid">
-      <div>
-        <div class="panel"><h2>Medidores <span class="sub">— como o reino está</span></h2>
-          <div class="meters" id="meters"></div><div class="clima" id="clima"></div></div>
-        <div class="panel"><h2>Atributos <span class="sub">— o que o reino é (e faz)</span></h2><div id="attrs"></div></div>
-      </div>
-      <div>
-        <div class="panel"><h2>A estação <span class="sub">— Colhe · Paga · Acontece · Age</span></h2>
-          <div class="log" id="log"></div><div id="stage" class="cards"></div>
-          <div class="hint" id="stageHint">O tempo corre em dias: mova expedições ou use “Passar dias”. Renda e eventos acontecem sozinhos.</div></div>
-        <div class="panel"><h2>Age <span class="sub">— comprar propriedades (atributos destravam, propriedades facilitam expedições)</span></h2><div class="shop" id="shop"></div></div>
-        <div class="panel"><h2>Propriedades do reino <span class="sub">— o que você construiu, com níveis</span></h2><div class="props" id="props"></div></div>
-      </div>
+    <div class="kingtabs" id="kingTabs">
+      <button class="kingtab on" id="tabBtnReino" onclick="setAbaKingdom('reino')">🏰 Reino</button>
+      <button class="kingtab" id="tabBtnConstruir" onclick="setAbaKingdom('construir')">🔨 Construir</button>
+      <button class="kingtab" id="tabBtnComercio" onclick="setAbaKingdom('comercio')">⚖ Comércio</button>
     </div>
 
-    <div class="panel"><h2>Comércio <span class="sub">— provisões e serviços das propriedades com loja</span></h2>
-      <div id="comercio"></div></div>
-
-    <div class="panel"><h2>Mapa <span class="sub">— o hexcrawl: onde os eventos se concretizam</span></h2>
-      <div class="maprow">
-        <div><svg id="hexmap" viewBox="0 0 480 420"></svg></div>
+    <div id="viewReino">
+      <div class="grid">
         <div>
-          <div class="expbar" id="expbar"></div>
-          <div class="hexinfo" id="hexinfo">Clique num hex para ver e agir.</div>
-          <div class="legend" id="legend" style="margin-top:12px"></div>
+          <div class="panel"><h2>Medidores <span class="sub">— como o reino está</span></h2>
+            <div class="meters" id="meters"></div><div class="clima" id="clima"></div></div>
+          <div class="panel"><h2>Atributos <span class="sub">— o que o reino é (e faz)</span></h2><div id="attrs"></div></div>
+        </div>
+        <div>
+          <div class="panel"><h2>A estação <span class="sub">— Colhe · Paga · Acontece · Age</span></h2>
+            <div class="log" id="log"></div><div id="stage" class="cards"></div>
+            <div class="hint" id="stageHint">O tempo corre em dias: mova expedições ou use “Passar dias”. Renda e eventos acontecem sozinhos.</div></div>
+          <div class="panel"><h2>Propriedades do reino <span class="sub">— o que você construiu, com níveis</span></h2><div class="props" id="props"></div></div>
         </div>
       </div>
+
+      <div class="panel"><h2>Mapa <span class="sub">— o hexcrawl: onde os eventos se concretizam</span></h2>
+        <div class="maprow">
+          <div><svg id="hexmap" viewBox="0 0 480 420"></svg></div>
+          <div>
+            <div class="expbar" id="expbar"></div>
+            <div class="hexinfo" id="hexinfo">Clique num hex para ver e agir.</div>
+            <div class="legend" id="legend" style="margin-top:12px"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel"><h2>Personagens <span class="sub">— aventureiros disponíveis para expedição</span></h2>
+        <div id="chars"></div></div>
+
+      <div class="panel"><h2>Expedições <span class="sub">— agentes no hexcrawl</span></h2>
+        <div id="exps"></div>
+        <button class="ghost" id="btnAddExp" style="margin-top:10px">+ expedição</button></div>
     </div>
 
-    <div class="panel"><h2>Personagens <span class="sub">— aventureiros disponíveis para expedição</span></h2>
-      <div id="chars"></div></div>
+    <div id="viewConstruir" style="display:none">
+      <div class="panel" style="padding-bottom:6px"><div class="meters" id="metersConstruir"></div></div>
+      <div class="panel"><h2>Age <span class="sub">— comprar propriedades (atributos destravam, propriedades facilitam expedições)</span></h2><div class="shop" id="shop"></div></div>
+    </div>
 
-    <div class="panel"><h2>Expedições <span class="sub">— agentes no hexcrawl</span></h2>
-      <div id="exps"></div>
-      <button class="ghost" id="btnAddExp" style="margin-top:10px">+ expedição</button></div>
+    <div id="viewComercio" style="display:none">
+      <div class="panel"><h2>Comércio <span class="sub">— provisões e serviços das propriedades com loja</span></h2>
+        <div id="comercio"></div></div>
+    </div>
   </div>
   <div class="foot">Kingdom — protótipo jogável v0.4 · sistema agnóstico de reino · salvo no navegador.</div>
 </div>
@@ -484,6 +503,18 @@ function aplicarTema(){
   const b=document.getElementById("btnTema");if(b)b.textContent=TEMA==="light"?"☀ Claro":"🌙 Escuro";
 }
 function alternarTema(){TEMA=TEMA==="light"?"dark":"light";try{localStorage.setItem("kingdom_theme",TEMA);}catch(e){}aplicarTema();renderMapa();}
+/* Abas do painel principal — igual tema, é preferência de tela, não estado do reino. Reino fica em
+   destaque (mapa, atributos e propriedades); comprar e comércio saem pra abas próprias, ambiente mais limpo. */
+let abaKingdom="reino";
+function setAbaKingdom(a){
+  abaKingdom=a;
+  document.getElementById("viewReino").style.display=(a==="reino")?"":"none";
+  document.getElementById("viewConstruir").style.display=(a==="construir")?"":"none";
+  document.getElementById("viewComercio").style.display=(a==="comercio")?"":"none";
+  document.getElementById("tabBtnReino").className="kingtab"+(a==="reino"?" on":"");
+  document.getElementById("tabBtnConstruir").className="kingtab"+(a==="construir"?" on":"");
+  document.getElementById("tabBtnComercio").className="kingtab"+(a==="comercio"?" on":"");
+}
 const LIM_ATTR=[0,10],LIM_MED={moral:[0,10],fama:[0,10],ameaca:[0,10]};
 const clamp=(v,[a,b])=>Math.max(a,Math.min(b,v));
 
@@ -842,6 +873,8 @@ function render(){
     const bonTxt=bon>0?` <span style="color:var(--good);font-weight:400;font-size:11px">(+${bon} propriedades)</span>`:"";
     return `<div class="meter ${cls}"><div class="k">${lab}</div><div class="v ${vcls}">${val}${bonTxt}</div></div>`;}).join("");
   document.getElementById("clima").innerHTML=climaTexto();
+  const metersConstruir=document.getElementById("metersConstruir");
+  if(metersConstruir)metersConstruir.innerHTML=`<div class="meter tesouro"><div class="k">Tesouro disponível</div><div class="v">${Math.round(S.med.tesouro)}</div></div>`;
   document.getElementById("attrs").innerHTML=ATRIBUTOS.map(([k,lab])=>{
     const extra=k==="populacao"?` <span style="color:var(--muted-tx);font-weight:400">(livre: ${populacaoLivre()})</span>`:"";
     const mestreBtns=(k==="populacao"&&papel==="mestre")?`<span style="margin-left:6px"><button class="ghost" style="padding:0 6px;font-size:12px" onclick="ajustarPopulacaoManual(-1)">−</button><button class="ghost" style="padding:0 6px;font-size:12px" onclick="ajustarPopulacaoManual(1)">+</button></span>`:"";
