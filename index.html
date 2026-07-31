@@ -109,9 +109,13 @@
   .meter{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px;position:relative}
   .meter .k{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted-tx)}
   .meter .v{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px}
-  .meter.tesouro{grid-column:1/-1;background:#332b18;border-color:#5a4a22;padding-right:56px} .meter.tesouro .v{color:var(--accent)}
-  .meter.tesouro::after{content:"";position:absolute;right:8px;top:50%;transform:translateY(-50%);width:42px;height:42px;
-    background:url('img/ui/treasure.png') center/contain no-repeat;opacity:.9}
+  /* --tsz (tamanho do ícone) vem inline do render() — cresce com o Tesouro e encolhe perto de
+     zero (ver tamanhoIconeTesouro()). padding-right acompanha o tamanho pra não bater no texto. */
+  .meter.tesouro{grid-column:1/-1;background:#332b18;border-color:#5a4a22;padding-right:calc(var(--tsz,42px) + 24px);
+    transition:padding-right .4s ease}
+  .meter.tesouro .v{color:var(--accent)}
+  .meter.tesouro::after{content:"";position:absolute;right:8px;top:50%;transform:translateY(-50%);width:var(--tsz,42px);height:var(--tsz,42px);
+    background:url('img/ui/treasure.png') center/contain no-repeat;opacity:.9;transition:width .4s ease,height .4s ease}
   .meter.notoriedade{padding-right:38px}
   .meter.notoriedade::after{content:"";position:absolute;right:8px;top:50%;transform:translateY(-50%);width:24px;height:24px;
     background:url('img/ui/res_banner.png') center/contain no-repeat;opacity:.85}
@@ -156,6 +160,20 @@
     /* faixa fina — os cantos ornamentados de 26px do .panel ficam grandes demais numa linha só */
     background-size:0 0,0 0,0 0,0 0,cover,320px 320px}
   .foot{margin-top:16px;font-size:11px;color:#6a6355;text-align:center}
+  /* Popup de evento novo — reaproveita o mesmo .card do cardHTML() dentro de uma moldura
+     destacada, só que centralizado sobre o resto da tela em vez de mais um item na grade
+     "A Estação" (onde passava despercebido). */
+  .popup-overlay{position:fixed;inset:0;background:rgba(10,8,5,.72);display:flex;align-items:center;
+    justify-content:center;z-index:200;padding:20px;animation:popupFade .2s ease}
+  @keyframes popupFade{from{opacity:0}to{opacity:1}}
+  .popup-box{position:relative;max-width:340px;width:100%;animation:popupPop .28s cubic-bezier(.2,.9,.3,1.3);
+    filter:drop-shadow(0 10px 30px rgba(0,0,0,.55))}
+  @keyframes popupPop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+  .popup-box .card{margin:0;box-shadow:0 0 0 2px var(--accent),0 0 24px 2px rgba(201,162,75,.45)}
+  .popup-close{position:absolute;top:-14px;right:-14px;width:30px;height:30px;padding:0;border-radius:50%;
+    background:var(--panel2);border:1px solid var(--accent);color:var(--ink);font-size:14px;line-height:1;z-index:1}
+  .popup-close:hover{background:var(--accent);color:#241d0a}
+  .popup-queue{text-align:center;font-size:11.5px;color:var(--ink);margin-top:8px;opacity:.85}
   .origens{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin-top:12px}
   .origem{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px;cursor:pointer;transition:border-color .15s}
   .origem:hover{border-color:var(--muted-tx)} .origem.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
@@ -342,6 +360,14 @@
   <div class="foot">Kingdom — protótipo jogável v0.4 · sistema agnóstico de reino · salvo no navegador.</div>
 </div>
 
+<div id="eventoPopup" class="popup-overlay" style="display:none" onclick="if(event.target===this)fecharEventoPopup()">
+  <div class="popup-box">
+    <button class="ghost popup-close" onclick="fecharEventoPopup()" title="Fechar">✕</button>
+    <div id="eventoPopupBody"></div>
+    <div class="popup-queue" id="eventoPopupQueueTag"></div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ======================================================================
@@ -370,12 +396,12 @@ const TERRENOS={
   desconhecido:{cor:"#2a2722",sim:"?",nome:"Por explorar"}};
 /* Regras de assentamento por terreno: pode? custo base? exige capacidade? */
 const SETTLE={
-  campo:{pode:true,custo:25},estepe:{pode:true,custo:25},
-  floresta:{pode:true,custo:40},costa:{pode:true,custo:40},
-  pantano:{pode:true,custo:55},
-  montanha:{pode:true,custo:60,requer:"mineracao",requerTxt:"Guilda de Anões na capital"},
+  campo:{pode:true,custo:75},estepe:{pode:true,custo:75},
+  floresta:{pode:true,custo:120},costa:{pode:true,custo:120},
+  pantano:{pode:true,custo:165},
+  montanha:{pode:true,custo:180,requer:"mineracao",requerTxt:"Guilda de Anões na capital"},
   desconhecido:{pode:false}};
-const ROAD=15;
+const ROAD=45;
 const NIVEIS_ASSENT=["Arraial","Vila","Cidade","Grande Cidade","Metrópole"];
 /* Influência começa em 0 para todas as origens: vocês são um posto afastado dentro de um reino maior.
    População inicial nunca é menor que 8: com o custo de 2 população por aventureiro (ver
@@ -435,23 +461,28 @@ const BARALHOS={
    estudiosos e a equipe do hospital não trabalham a terra nem o comércio, mas ainda comem e custam). */
 /* multiplo:true = pode ter mais de uma cópia (terra/recurso, escala com território/mão de obra);
    sem essa flag, só 1 cópia (institucional/único no reino) — ver comprarAtivo(). */
+/* Custos ×3 em relação à v1 (task #144): Economia foi destravada do teto de 10 (não trava
+   mais em ~10/dia de renda) e o reino inflacionava rápido demais com custos calibrados pra
+   aquele teto antigo. Tesouro aqui equivale a peças de ouro que os jogadores também ganham
+   em aventura — precisa pesar de verdade, não ser trocado. Upkeep (manutenção por dia) ficou
+   como estava: o gargalo agora é construir, não manter o que já foi construído. */
 const ATIVOS=[
-  {id:"fazendas",nome:"Fazendas",img:"fazendas.jpg",custo:20,mods:{economia:1,populacao:1},multiplo:true},
-  {id:"taverna",nome:"Taverna",img:"taverna.jpg",custo:20,mods:{notoriedade:1,economia:1},loja:"taverna",multiplo:true},
-  {id:"forte",nome:"Forte",img:"forte.jpg",custo:40,mods:{militar:2,moral:1},upkeep:1.5},
-  {id:"quartel",nome:"Quartel",img:"quartel.jpg",custo:35,mods:{militar:2},reqAttr:{militar:2},recruta:{sugestao:"soldado / combatente treinado"},upkeep:1.2},
-  {id:"porto",nome:"Porto",img:"porto.jpg",custo:35,mods:{economia:1},instr:"embarcacao",instrTxt:"libera transporte por embarcação",reqAttr:{economia:4}},
-  {id:"estabulo",nome:"Estábulos",img:"estabulo.jpg",custo:25,mods:{militar:1,populacao:1},instr:"montaria",instrTxt:"libera transporte montado",reqAttr:{populacao:3},multiplo:true,loja:"estabulo"},
-  {id:"mina",nome:"Mineração",img:"mina.jpg",custo:30,mods:{economia:2},multiplo:true},
-  {id:"ferreiro",nome:"Ferreiro",img:"ferreiro.jpg",custo:25,mods:{militar:1,economia:1},reqAttr:{militar:1},loja:"ferreiro",multiplo:true},
-  {id:"cabana_cacador",nome:"Cabana do Caçador",img:"cabana_cacador.jpg",custo:22,mods:{militar:1},reqAttr:{populacao:2},recruta:{sugestao:"caçador / atirador"},loja:"cabana_cacador",multiplo:true},
-  {id:"guilda",nome:"Guilda",img:"guilda.jpg",custo:30,mods:{influencia:1,economia:1},instr:"cartografia",instrTxt:"mapas: menos risco de encontro",reqAttr:{economia:3,influencia:1},recruta:{sugestao:"explorador / batedor"},especial:"sitio"},
-  {id:"guilda_anoes",nome:"Guilda de Anões",img:"anoes.jpg",custo:40,mods:{economia:1,militar:1},cap:"mineracao",capTxt:"permite assentar montanhas",reqAttr:{economia:5,militar:2},recruta:{sugestao:"minerador / engenheiro"}},
-  {id:"herbalista",nome:"Herbalista",img:"herbalista.jpg",custo:22,mods:{populacao:1},instr:"remedios",instrTxt:"remédios: reduz risco de encontro",reqAttr:{populacao:3},recruta:{sugestao:"curandeiro / herbalista"}},
-  {id:"templo",nome:"Templo",img:"templo.jpg",custo:25,mods:{influencia:1,moral:1},recruta:{sugestao:"monge / místico devoto"},upkeep:0.6},
-  {id:"biblioteca",nome:"Biblioteca",img:"biblioteca.jpg",custo:28,mods:{influencia:1},reqAttr:{economia:4},recruta:{sugestao:"mago / estudioso arcano"},upkeep:1},
-  {id:"hospital",nome:"Hospital",img:"hospital.jpg",custo:30,mods:{populacao:1,moral:1},upkeep:1},
-  {id:"torre_mago",nome:"Torre do Mago",img:"torre_mago.jpg",custo:45,mods:{influencia:1},reqAttr:{influencia:2},recruta:{sugestao:"aprendiz de mago"},upkeep:1.4,especial:"previsao"},
+  {id:"fazendas",nome:"Fazendas",img:"fazendas.jpg",custo:60,mods:{economia:1,populacao:1},multiplo:true},
+  {id:"taverna",nome:"Taverna",img:"taverna.jpg",custo:60,mods:{notoriedade:1,economia:1},loja:"taverna",multiplo:true},
+  {id:"forte",nome:"Forte",img:"forte.jpg",custo:120,mods:{militar:2,moral:1},upkeep:1.5},
+  {id:"quartel",nome:"Quartel",img:"quartel.jpg",custo:105,mods:{militar:2},reqAttr:{militar:2},recruta:{sugestao:"soldado / combatente treinado"},upkeep:1.2},
+  {id:"porto",nome:"Porto",img:"porto.jpg",custo:105,mods:{economia:1},instr:"embarcacao",instrTxt:"libera transporte por embarcação",reqAttr:{economia:4}},
+  {id:"estabulo",nome:"Estábulos",img:"estabulo.jpg",custo:75,mods:{militar:1,populacao:1},instr:"montaria",instrTxt:"libera transporte montado",reqAttr:{populacao:3},multiplo:true,loja:"estabulo"},
+  {id:"mina",nome:"Mineração",img:"mina.jpg",custo:90,mods:{economia:2},multiplo:true},
+  {id:"ferreiro",nome:"Ferreiro",img:"ferreiro.jpg",custo:75,mods:{militar:1,economia:1},reqAttr:{militar:1},loja:"ferreiro",multiplo:true},
+  {id:"cabana_cacador",nome:"Cabana do Caçador",img:"cabana_cacador.jpg",custo:66,mods:{militar:1},reqAttr:{populacao:2},recruta:{sugestao:"caçador / atirador"},loja:"cabana_cacador",multiplo:true},
+  {id:"guilda",nome:"Guilda",img:"guilda.jpg",custo:90,mods:{influencia:1,economia:1},instr:"cartografia",instrTxt:"mapas: menos risco de encontro",reqAttr:{economia:3,influencia:1},recruta:{sugestao:"explorador / batedor"},especial:"sitio"},
+  {id:"guilda_anoes",nome:"Guilda de Anões",img:"anoes.jpg",custo:120,mods:{economia:1,militar:1},cap:"mineracao",capTxt:"permite assentar montanhas",reqAttr:{economia:5,militar:2},recruta:{sugestao:"minerador / engenheiro"}},
+  {id:"herbalista",nome:"Herbalista",img:"herbalista.jpg",custo:66,mods:{populacao:1},instr:"remedios",instrTxt:"remédios: reduz risco de encontro",reqAttr:{populacao:3},recruta:{sugestao:"curandeiro / herbalista"}},
+  {id:"templo",nome:"Templo",img:"templo.jpg",custo:75,mods:{influencia:1,moral:1},recruta:{sugestao:"monge / místico devoto"},upkeep:0.6},
+  {id:"biblioteca",nome:"Biblioteca",img:"biblioteca.jpg",custo:84,mods:{influencia:1},reqAttr:{economia:4},recruta:{sugestao:"mago / estudioso arcano"},upkeep:1},
+  {id:"hospital",nome:"Hospital",img:"hospital.jpg",custo:90,mods:{populacao:1,moral:1},upkeep:1},
+  {id:"torre_mago",nome:"Torre do Mago",img:"torre_mago.jpg",custo:135,mods:{influencia:1},reqAttr:{influencia:2},recruta:{sugestao:"aprendiz de mago"},upkeep:1.4,especial:"previsao"},
   /* Armazém: dada de graça na fundação (ver fundar()), não aparece na loja (oculto:true) e não
      entra em obra (nasce nivel:1). Guarda itens/animais comprados sem destino — ver comprarItemLoja,
      renderArmazem, enviarDoArmazem. Capacidade cresce com o nível (capacidadeArmazem). */
@@ -601,7 +632,7 @@ function comprarItemLoja(propUid,itemId,destino){
 }
 
 /* ============ ESTADO ============ */
-function estadoInicial(){return{fundado:false,nome:"Reino",origem:null,estacaoIdx:0,ano:1,modo:"completo",dificuldade:"equilibrado",feed:[],eventos:[],
+function estadoInicial(){return{fundado:false,nome:"Reino",origem:null,estacaoIdx:0,ano:1,modo:"completo",dificuldade:"duro",feed:[],eventos:[],
   attr:{militar:0,economia:0,influencia:0,populacao:0},
   med:{tesouro:120,moral:5,notoriedade:1,ameaca:1},ativos:[],pendentes:[],hexes:[],expRest:0,
   dias:0,diasPorEstacao:90,personagens:[],expedicoes:[]};}
@@ -760,7 +791,7 @@ function podeIncorporar(h){
   if(cfg.requer&&!capacidades().has(cfg.requer))return{ok:false,motivo:"requer "+cfg.requerTxt};
   const adj=vizinhosConectaveis(h).length>0;
   return{ok:true,custo:cfg.custo+(adj?ROAD:0),adj};}
-const POSTO_CUSTO=12,POSTO_ROAD=8; // bem mais barato que assentar (SETTLE custo 25-60 + ROAD 15)
+const POSTO_CUSTO=36,POSTO_ROAD=24; // bem mais barato que assentar (SETTLE custo 75-180 + ROAD 45)
 function podeConstruirPosto(h){
   if(!h||h.estado!=="explorado")return{ok:false,motivo:"precisa ser explorado primeiro"};
   const cfg=SETTLE[h.terreno]||{pode:false};
@@ -911,8 +942,9 @@ function sincronizarRelogio(){
   const frente=Math.max(S.dias,...S.expedicoes.map(x=>x.dia||0));
   if(frente>S.dias)avancarDias(frente-S.dias);
 }
+/* Exploração é ação normal do Jogador (ver renderExpInfo) — só as ferramentas exclusivas do
+   mestre (gmHexTools, loja, população manual, eventos) continuam atrás de bloqueadoLeitura(). */
 function moverExp(id,q,r){
-  if(bloqueadoLeitura())return;
   const e=getExp(id);if(!e)return;const from=getHex(e.q,e.r),to=getHex(q,r);
   if(!to||to.estado==="oculto"){flashHint("Não se viaja ao desconhecido — vá a um hex já conhecido.");return;}
   if(hexDist(from,to)!==1){flashHint("Mova-se para um hex adjacente.");return;}
@@ -928,7 +960,6 @@ function moverExp(id,q,r){
   salvar();selHex=[q,r];render();
 }
 function expResolver(q,r){
-  if(bloqueadoLeitura())return;
   const h=getHex(q,r);if(!h||!h.sitio)return;
   // Resolver é sempre agência da expedição (estar presente); atributo é dica, nunca bloqueio.
   const s=h.sitio;aplicar(s.recomp,DIFICULDADE[S.dificuldade].recompensa);h.sitio=null;
@@ -936,7 +967,6 @@ function expResolver(q,r){
   salvar();selHex=[q,r];render();
 }
 function expIncorporar(q,r){
-  if(bloqueadoLeitura())return;
   const h=getHex(q,r);if(!h)return;const p=podeIncorporar(h);
   if(!p.ok){flashHint("Não dá para assentar: "+p.motivo);return;}
   if(S.med.tesouro<p.custo){flashHint("Tesouro insuficiente ("+p.custo+").");return;}
@@ -948,7 +978,6 @@ function expIncorporar(q,r){
    hex do caminho (ver hexConectavel/podeConstruirPosto). Fica marcado h.posto=true — o hex
    continua "explorado" (não vira "incorporado"), só ganha esse flag extra + conta pra estrada. */
 function expConstruirPosto(q,r){
-  if(bloqueadoLeitura())return;
   const h=getHex(q,r);if(!h)return;const p=podeConstruirPosto(h);
   if(!p.ok){flashHint("Não dá pra erguer posto: "+p.motivo);return;}
   if(S.med.tesouro<p.custo){flashHint("Tesouro insuficiente ("+p.custo+").");return;}
@@ -959,7 +988,6 @@ function expConstruirPosto(q,r){
 /* Investir mais tarde: o posto vira um Arraial de verdade (população/economia). Como já está
    conectado (era posto), não cobra de novo o adicional de estrada — só o custo base do terreno. */
 function evoluirPostoParaArraial(q,r){
-  if(bloqueadoLeitura())return;
   const h=getHex(q,r);if(!h||!h.posto)return;
   const cfg=SETTLE[h.terreno]||{pode:false};
   if(!cfg.pode){flashHint("terreno não permite assentamento");return;}
@@ -971,10 +999,9 @@ function evoluirPostoParaArraial(q,r){
   salvar();selHex=[q,r];render();
 }
 function evoluirAssent(q,r){
-  if(bloqueadoLeitura())return;
   const h=getHex(q,r);if(!h||h.estado!=="incorporado")return;const nv=h.nivelAssent||1;
   if(nv>=NIVEIS_ASSENT.length){flashHint("Já é o nível máximo.");return;}
-  const custo=40*nv;if(S.med.tesouro<custo){flashHint("Tesouro insuficiente ("+custo+").");return;}
+  const custo=120*nv;if(S.med.tesouro<custo){flashHint("Tesouro insuficiente ("+custo+").");return;}
   S.med.tesouro-=custo;h.nivelAssent=nv+1;aplicar({economia:1,populacao:1});
   logClear();logBeat("Assentamento",`Evoluiu para ${NIVEIS_ASSENT[nv]} em ${TERRENOS[h.terreno].nome}. +Economia, +População.`);
   salvar();selHex=[q,r];render();
@@ -982,9 +1009,8 @@ function evoluirAssent(q,r){
 /* Militar local: defesa própria de cada assentamento (inclusive a capital), separada do
    Militar do reino (S.attr.militar). Sobe gastando tesouro; estar conectado por estrada à
    capital não soma poder direto, mas dá desconto no custo de evoluir (rota de suprimento). */
-function custoMilitarLocal(h){const base=15*(h.militarLocal||1);return hexSeguro(h)?Math.round(base*0.65):base;}
+function custoMilitarLocal(h){const base=45*(h.militarLocal||1);return hexSeguro(h)?Math.round(base*0.65):base;}
 function evoluirMilitarLocal(q,r){
-  if(bloqueadoLeitura())return;
   const h=getHex(q,r);if(!h||h.estado!=="incorporado")return;
   if((h.militarLocal||1)>=10){flashHint("Militar local já no máximo.");return;}
   const custo=custoMilitarLocal(h);if(S.med.tesouro<custo){flashHint("Tesouro insuficiente ("+custo+").");return;}
@@ -1053,8 +1079,15 @@ function anoAtual(){return Math.floor(S.dias/(S.diasPorEstacao*4))+1;}
 /* S.impostosCortados: rebelião/desordem por Moral baixa reduz a renda por um tempo
    (não é um golpe único no Tesouro guardado, é a arrecadação em si que fica capenga
    enquanto durar) — ver checarColetaImpostos(). */
+/* Economia não tem teto de 10 (ver ATTRS_SEM_TETO) — mas sem isso a renda diária (economia ×
+   fator de estação) virava máquina de dinheiro infinita sozinha assim que Economia passasse de
+   10-15. Retorno decrescente (task #144): cada ponto de Economia ainda vale a pena investir,
+   mas os pontos além do antigo teto (10) rendem só metade do que rendiam antes — cresce pra
+   sempre, só não explode. */
+const ECONOMIA_RENDA_LIMIAR=10,ECONOMIA_RENDA_FATOR_EXTRA=0.5;
+function economiaEfetiva(e){return e<=ECONOMIA_RENDA_LIMIAR?e:ECONOMIA_RENDA_LIMIAR+(e-ECONOMIA_RENDA_LIMIAR)*ECONOMIA_RENDA_FATOR_EXTRA;}
 function dailyIncome(){
-  let base=attrTotal("economia")*ESTACOES[estacaoAtualIdx()][2];
+  let base=economiaEfetiva(attrTotal("economia"))*ESTACOES[estacaoAtualIdx()][2];
   if(S.impostosCortados&&S.impostosCortados.diasRestantes>0)base*=(1-S.impostosCortados.fator);
   return base;
 }
@@ -1238,6 +1271,7 @@ function dispararEvento(){
   const nomes={bonanca:"Bonança",cotidiano:"Cotidiano",crise:"Crise"};
   feedPush(`[${nomes[c.baralho]}] ${c.titulo}${partes.length?" — "+partes.join(" · "):""}`);
   S.eventos=([c].concat(S.eventos||[])).slice(0,6);
+  enfileirarEventoPopup(c);
 }
 function eventoDeEstacao(){
   const est=estacaoAtualIdx();
@@ -1267,11 +1301,21 @@ function pressaoRiquezaNotoriedade(){
   if(Math.random()<0.15*pontos){aplicar({ameaca:1});return true;}
   return false;
 }
+/* O mundo lá fora não fica parado: monstros se multiplicam, bandidos se organizam, rivais
+   avançam — independente de o reino ter ou não riqueza/fama chamando atenção. Uma pequena
+   chance semanal de +1 Ameaça "de fundo", escalada pela dificuldade (mesmo crisePeso que pesa
+   o baralho), pra Ameaça nunca ficar de vez estacionada em 0 num reino manso e sem sítios. */
+function pressaoTempoAmeaca(){
+  const chance=0.08*DIFICULDADE[S.dificuldade].crisePeso;
+  if(Math.random()<chance){aplicar({ameaca:1});return true;}
+  return false;
+}
 function checarPressaoAmeaca(){
   const pressao=pressaoAmeaca();
   if(pressao>0){aplicar({ameaca:pressao});feedPush(`${pressao} sítio(s) de ameaça fora de proteção pressionam: +${pressao} Ameaça.`);}
   else if(sitiosAmeaca()>0)feedPush(`Militar ${attrTotal("militar")} ≥ Ameaça ${medTotal("ameaca")}: assentamentos seguros seguem protegidos.`);
   if(pressaoRiquezaNotoriedade())feedPush(`Um reino com Tesouro (${Math.round(S.med.tesouro)}) e Notoriedade (${medTotal("notoriedade")}) tão altos vira alvo: +1 Ameaça.`);
+  if(pressaoTempoAmeaca())feedPush(`O tempo passa e o mundo lá fora não espera: +1 Ameaça.`);
   if(medTotal("ameaca")>=AMEACA_MORAL_LIMIAR){aplicar({moral:-1});feedPush(`A Ameaça alta (${medTotal("ameaca")}) pesa sobre o povo: −1 Moral.`);}
 }
 /* Influência traz novidades: quanto mais conhecidos no reino maior, mais o mundo bate à porta. */
@@ -1318,6 +1362,12 @@ function escalaAtual(){const idx=clamp(Math.floor((territorioAtual()+attrTotal("
 function climaTexto(){const moral=medTotal("moral"),ameaca=medTotal("ameaca");
   let t=moral>=6&&ameaca<=3?"tende à <b>Bonança</b>":ameaca>=6?"tende à <b>Crise</b>":"está <b>equilibrado</b>";
   return `Clima da próxima estação ${t} — Moral ${moral}, Ameaça ${ameaca}.`;}
+/* Ícone do Tesouro cresce com o cofre e encolhe perto de zero (pedido do Thiago). Curva em raiz
+   quadrada (não linear) pra não disparar de tamanho logo nos primeiros 100 de Tesouro — calibrada
+   pra ficar do tamanho original (42px) perto do Tesouro inicial (120) e saturar em 72px pra
+   reinos bem ricos; o mínimo de 18px garante que o ícone nunca suma de vez, só encolhe. */
+const TESOURO_ICON_MIN=18,TESOURO_ICON_MAX=72,TESOURO_ICON_K=2.0;
+function tamanhoIconeTesouro(v){return Math.round(clamp(TESOURO_ICON_MIN+TESOURO_ICON_K*Math.sqrt(Math.max(0,v)),[TESOURO_ICON_MIN,TESOURO_ICON_MAX]));}
 function render(){
   document.getElementById("reinoNome").textContent=S.nome;
   document.getElementById("founding").style.display=S.fundado?"none":"block";
@@ -1338,7 +1388,8 @@ function render(){
     if(k==="ameaca")vcls=vTot>=6?"bad":(vTot<=2?"good":"");
     const val=k==="tesouro"?Math.round(vBase):vTot;
     const bonTxt=bon>0?` <span style="color:var(--good);font-weight:400;font-size:11px">(+${bon} propriedades)</span>`:"";
-    return `<div class="meter ${cls}" title="${EFEITO_MED[k]||""}"><div class="k">${lab}</div><div class="v ${vcls}">${val}${bonTxt}</div></div>`;}).join("");
+    const tszAttr=k==="tesouro"?` style="--tsz:${tamanhoIconeTesouro(vBase)}px"`:"";
+    return `<div class="meter ${cls}"${tszAttr} title="${EFEITO_MED[k]||""}"><div class="k">${lab}</div><div class="v ${vcls}">${val}${bonTxt}</div></div>`;}).join("");
   document.getElementById("clima").innerHTML=climaTexto();
   const metersConstruir=document.getElementById("metersConstruir");
   if(metersConstruir){
@@ -1347,7 +1398,7 @@ function render(){
       <div class="meter"><div class="k">Sustento diário</div><div class="v" style="font-size:15px">-${sustDia} <span style="color:var(--muted-tx);font-weight:400;font-size:11px">(propriedades + população livre)</span></div></div>`;
   }
   document.getElementById("attrs").innerHTML=ATRIBUTOS.map(([k,lab])=>{
-    const extra=k==="populacao"?` <span style="color:var(--muted-tx);font-weight:400">(livre: ${populacaoLivre()})</span>`:"";
+    const extra=k==="populacao"?` <span style="color:var(--muted-tx);font-weight:400" title="${popBreakdownTxt()}">(livre: ${populacaoLivre()})</span>`:"";
     const mestreBtns=(k==="populacao"&&papel==="mestre")?`<span style="margin-left:6px"><button class="ghost" style="padding:0 6px;font-size:12px" onclick="ajustarPopulacaoManual(-1)">−</button><button class="ghost" style="padding:0 6px;font-size:12px" onclick="ajustarPopulacaoManual(1)">+</button></span>`:"";
     const vTot=attrTotal(k),bon=vTot-S.attr[k];
     const bonTxt=bon>0?` <span style="color:var(--good);font-weight:400;font-size:11px">(${S.attr[k]}+${bon})</span>`:"";
@@ -1403,6 +1454,30 @@ function cardHTML(c){const nomes={bonanca:"Bonança",cotidiano:"Cotidiano",crise
     <div class="body"><div class="deckname">${nomes[c.baralho]}</div><h3>${c.titulo}</h3>
     <div class="kind">${tipoTxt}</div><div class="txt">${c.txt}</div>${fx?`<div class="fx">${fx}</div>`:""}${onde}${acao}</div></div>`;}
 
+/* Popup de evento novo (pedido do Thiago: cada carta sorteada deve aparecer em destaque, não só
+   discretamente na grade "A Estação"). Fila em memória só — não entra no save nem sincroniza
+   entre mestre/jogador, é pura reação local a dispararEvento() rodando neste navegador. */
+let eventoPopupFila=[];
+function popupEventoAberto(){const el=document.getElementById("eventoPopup");return!!el&&el.style.display==="flex";}
+function enfileirarEventoPopup(c){
+  eventoPopupFila.push(c);
+  if(!popupEventoAberto())mostrarProximoEventoPopup();
+  else atualizarTagFilaPopup(); // popup já aberto noutro evento — só atualiza o contador "+N na fila"
+}
+function atualizarTagFilaPopup(){
+  const tag=document.getElementById("eventoPopupQueueTag");if(!tag)return;
+  const restantes=eventoPopupFila.length-1;
+  tag.textContent=restantes>0?`+${restantes} evento${restantes===1?"":"s"} na fila`:"";
+}
+function mostrarProximoEventoPopup(){
+  const overlay=document.getElementById("eventoPopup");if(!overlay)return;
+  if(!eventoPopupFila.length){overlay.style.display="none";return;}
+  document.getElementById("eventoPopupBody").innerHTML=cardHTML(eventoPopupFila[0]);
+  atualizarTagFilaPopup();
+  overlay.style.display="flex";
+}
+function fecharEventoPopup(){if(eventoPopupFila.length)eventoPopupFila.shift();mostrarProximoEventoPopup();}
+
 function renderMapa(){const svg=document.getElementById("hexmap");if(!svg)return;
   const _ea=getExp(expAtiva),_apos=_ea?getHex(_ea.q,_ea.r):null;
   const pts=S.hexes.map(h=>({h,...axialToPx(h.q,h.r)}));
@@ -1446,9 +1521,11 @@ function renderExpInfo(){
   const box=document.getElementById("hexinfo");if(!box)return;
   if(!selHex){box.innerHTML="Clique num hex. Comande a expedição ativa (barra acima) e mova-a para hexes vizinhos.";return;}
   const h=getHex(selHex[0],selHex[1]);if(!h){box.innerHTML="—";return;}
-  if(papel==="mestre"){box.innerHTML=gmHexPanel(h);return;}
   const ativa=getExp(expAtiva);
-  if(h.estado==="oculto"){
+  const souMestre=papel==="mestre";
+  // Hex oculto: jogador só vê o convite a explorar; o mestre já sabe o que tem lá (mesmo sem
+  // revelado) e pode deixar notas/encontro preparados de antemão — ver gmHexTools() abaixo.
+  if(h.estado==="oculto"&&!souMestre){
     let t="Terra desconhecida. Mova uma expedição a um hex vizinho a este para revelá-lo.";
     box.innerHTML=t;
     if(ativa&&hexDist(getHex(ativa.q,ativa.r),h)===1)box.innerHTML=t+` <br><span class="req">(não se viaja direto ao oculto)</span>`;
@@ -1464,12 +1541,11 @@ function renderExpInfo(){
   if(aqui)s+=`<br><span style="color:var(--accent)">◉ ${esc(aqui.nome)} está aqui</span>`;
   if(h.sitio)s+=`<br><span class="req">${h.sitio.tipo==="ameaca"?"⚠":"✦"} ${h.sitio.nome}:</span> ${h.sitio.txt}${h.sitio.req?` <br>Dica: ${reqTexto(h.sitio.req)} ajuda aqui (não é obrigatório — quem resolve é a expedição).`:""}`;
   let btns="";
-  // mover expedição ativa para cá (adjacente)
-  if(ativa&&hexDist(getHex(ativa.q,ativa.r),h)===1){
+  // mover expedição ativa para cá (adjacente) — não faz sentido pra um hex ainda oculto
+  if(h.estado!=="oculto"&&ativa&&hexDist(getHex(ativa.q,ativa.r),h)===1){
     const mv=custoMov(getHex(ativa.q,ativa.r),h,ativa);
-    const cabe=true;
     const rl=riscoLabel(riscoMov(h,ativa));
-    btns+=`<button class="primary" ${cabe?"":"disabled"} onclick="moverExp('${ativa.id}',${h.q},${h.r})">Mover ${esc(ativa.nome)} aqui · ${mv.dias}d${mv.transp==="estrada"?" (estrada)":""}${rl!=="nenhum"?" · risco "+rl:""}</button>`;
+    btns+=`<button class="primary" onclick="moverExp('${ativa.id}',${h.q},${h.r})">Mover ${esc(ativa.nome)} aqui · ${mv.dias}d${mv.transp==="estrada"?" (estrada)":""}${rl!=="nenhum"?" · risco "+rl:""}</button>`;
   }
   // resolver sítio: exige expedição no hex
   if(h.sitio){
@@ -1489,20 +1565,24 @@ function renderExpInfo(){
     if(cfg.pode&&(!cfg.requer||capacidades().has(cfg.requer)))btns+=`<button onclick="evoluirPostoParaArraial(${h.q},${h.r})">Virar Arraial completo · ${cfg.custo}</button>`;
     btns+=`<button class="ghost" onclick="usarBatedorHex(${h.q},${h.r})">🧭 Enviar batedor · ${BATEDOR_CUSTO}</button>`;
   }
-  if(h.estado==="incorporado"){const nv=h.nivelAssent||1;if(nv<NIVEIS_ASSENT.length)btns+=`<button onclick="evoluirAssent(${h.q},${h.r})">Evoluir p/ ${NIVEIS_ASSENT[nv]} · ${40*nv}</button>`;}
+  if(h.estado==="incorporado"){const nv=h.nivelAssent||1;if(nv<NIVEIS_ASSENT.length)btns+=`<button onclick="evoluirAssent(${h.q},${h.r})">Evoluir p/ ${NIVEIS_ASSENT[nv]} · ${120*nv}</button>`;}
   if(h.estado==="incorporado"||h.posto){if((h.militarLocal||1)<10)btns+=`<button class="ghost" onclick="evoluirMilitarLocal(${h.q},${h.r})">⚔ Reforçar defesa local · ${custoMilitarLocal(h)}</button>`;}
-  let spoiler="";
-  if(h.nota||h.encontro)spoiler=`<div style="margin-top:8px"><button class="ghost" style="font-size:12px;padding:4px 8px" onclick="var d=this.nextElementSibling;d.style.display=d.style.display==='none'?'block':'none';">⚠ nota do mestre (spoiler)</button><div style="display:none;margin-top:6px;font-size:12px;color:var(--ink2);background:#00000025;border-radius:6px;padding:8px">${h.nota?'<b>Descrição:</b> '+esc(h.nota)+'<br>':''}${h.encontro?'<b>Encontro:</b> '+esc(h.encontro):''}</div></div>`;
-  box.innerHTML=s+(btns?`<div>${btns}</div>`:"")+spoiler;
+  // Mestre: ferramentas extras (recompensa de sítio, notas/encontro) anexadas embaixo, sem esconder
+  // as ações normais. Jogador sem essas ferramentas: só um spoiler dobrável se o mestre já deixou nota.
+  let extra="";
+  if(souMestre)extra=gmHexTools(h);
+  else if(h.nota||h.encontro)extra=`<div style="margin-top:8px"><button class="ghost" style="font-size:12px;padding:4px 8px" onclick="var d=this.nextElementSibling;d.style.display=d.style.display==='none'?'block':'none';">⚠ nota do mestre (spoiler)</button><div style="display:none;margin-top:6px;font-size:12px;color:var(--ink2);background:#00000025;border-radius:6px;padding:8px">${h.nota?'<b>Descrição:</b> '+esc(h.nota)+'<br>':''}${h.encontro?'<b>Encontro:</b> '+esc(h.encontro):''}</div></div>`;
+  box.innerHTML=s+(btns?`<div>${btns}</div>`:"")+extra;
 }
 function estadoLabel(e){return{conhecido:"conhecido",explorado:"explorado",incorporado:"incorporado"}[e]||e;}
 /* Chaves válidas de efeito (as mesmas que aplicar()/fmtEfeito entendem). */
 const EFEITO_CHAVES=["tesouro","moral","notoriedade","ameaca","militar","economia","populacao","influencia"];
-function gmHexPanel(h){
-  const climaAqui=climaHex(h);
-  let s=`<b>${TERRENOS[h.terreno].nome}</b> (${h.q},${h.r})${h.rio?" · 🌊 rio":""} · ${estadoLabel(h.estado)}${h.capital?" · capital ★":""} · ${climaIconHTML(climaAqui)} ${climaAqui.nome}`;
+/* Ferramentas exclusivas do mestre pro hex selecionado — recompensa de sítio (segredo) e
+   notas/encontro. Antes (gmHexPanel) isso SUBSTITUÍA o painel inteiro; agora só complementa,
+   ver renderExpInfo(). */
+function gmHexTools(h){
+  let s="";
   if(h.sitio){
-    s+=`<br>Sítio de carta: ${h.sitio.nome} (${h.sitio.tipo})`;
     s+=`<label class="gml">Recompensa (segredo — o jogador só vê o rumor, isto é só sugestão, edite à vontade)</label>`;
     const recomp=h.sitio.recomp||{};
     const linhas=Object.keys(recomp).map(k=>`<div class="trow"><span class="tag" style="width:90px">${labelCurto(k)}</span>
@@ -1513,7 +1593,7 @@ function gmHexPanel(h){
   }
   s+=`<label class="gml">Descrição do hex (spoiler p/ jogadores)</label><textarea class="gmt" onchange="setHexCampo(${h.q},${h.r},'nota',this.value)">${esc(h.nota||"")}</textarea>`;
   s+=`<label class="gml">Encontro / segredo (oculto aos jogadores)</label><textarea class="gmt" onchange="setHexCampo(${h.q},${h.r},'encontro',this.value)">${esc(h.encontro||"")}</textarea>`;
-  return s;
+  return `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)"><div class="hint" style="margin:0 0 6px">🛠 Ferramentas do mestre</div>${s}</div>`;
 }
 function setHexCampo(q,r,campo,val){if(papel!=="mestre")return;const h=getHex(q,r);if(!h)return;h[campo]=val;salvar();renderMapa();}
 function setSitioRecompValor(q,r,chave,val){if(papel!=="mestre")return;const h=getHex(q,r);if(!h||!h.sitio)return;h.sitio.recomp=h.sitio.recomp||{};h.sitio.recomp[chave]=parseFloat(val)||0;salvar();}
@@ -1686,6 +1766,15 @@ const DIAS_POR_NIVEL=20;
 const TIERS_RECRUTA=["iniciante","experiente","veterano","lendário"];
 function populacaoAlocada(){let n=S.personagens.length*CUSTO_POP_AVENTUREIRO;S.ativos.forEach(o=>n+=(o.trabalhadores||[]).length);return n;}
 function populacaoLivre(){return Math.max(0,attrTotal("populacao")-populacaoAlocada());}
+/* Explica pro jogador/mestre por que "livre" fica em 0 mesmo com a População total crescendo:
+   o total já inclui gente comprometida (2 por aventureiro recrutado + 1 por família alocada
+   numa propriedade) — crescer a População só libera vagas novas se ninguém for recrutar/alocar
+   na mesma taxa. Usado como tooltip do "(livre: N)" no painel de atributos. */
+function popBreakdownTxt(){
+  const nAv=S.personagens.length,custoAv=nAv*CUSTO_POP_AVENTUREIRO;
+  const nTrab=S.ativos.reduce((s,o)=>s+(o.trabalhadores||[]).length,0);
+  return `População total ${attrTotal("populacao")} = ${custoAv} em aventureiros (${nAv}×${CUSTO_POP_AVENTUREIRO}) + ${nTrab} em mão de obra alocada + ${populacaoLivre()} livre.`;
+}
 /* Quando a População cai (fome, desastre, evento do mestre etc.) e não sobra "gente livre" pra
    absorver a perda, alguém que já está trabalhando numa propriedade some de verdade — senão a
    ficha mostraria mais trabalhador alocado do que População total, um número que não bate.
@@ -1917,9 +2006,9 @@ function usarPrevisaoTempo(uid){
 }
 /* Batedor: habilidade do Posto Avançado no hexcrawl (não mais uma propriedade da capital —
    ver task #118). Cada posto pode mandar seu próprio batedor revelar terreno próximo. */
-const BATEDOR_CUSTO=8;
+const BATEDOR_CUSTO=24;
 function usarBatedorHex(q,r){
-  if(bloqueadoLeitura())return;const h=getHex(q,r);if(!h||!h.posto)return;
+  const h=getHex(q,r);if(!h||!h.posto)return;
   if(!gastarTesouro(BATEDOR_CUSTO)){flashHint(`Tesouro insuficiente (${BATEDOR_CUSTO} necessário).`);return;}
   const alvo=hexOcultoDistante(1,2);
   if(!alvo){feedPush("O batedor do Posto Avançado não acha nada novo perto — os arredores já são conhecidos.");salvar();render();return;}
@@ -2091,7 +2180,7 @@ function renderExpes(){
 /* eventos UI */
 document.getElementById("btnAvancar").onclick=()=>passarDias(7);
 document.getElementById("btnDia1").onclick=()=>passarDias(1);
-document.getElementById("btnReset").onclick=()=>{if(confirm("Recomeçar do zero? O reino atual será perdido.")){S=estadoInicial();selOrigem=null;selHex=null;salvar();render();}};
+document.getElementById("btnReset").onclick=()=>{if(confirm("Recomeçar do zero? O reino atual será perdido.")){S=estadoInicial();selOrigem=null;selHex=null;eventoPopupFila=[];mostrarProximoEventoPopup();salvar();render();}};
 document.getElementById("modo").onchange=e=>{S.modo=e.target.value;salvar();render();};
 document.getElementById("dificuldade").onchange=e=>{S.dificuldade=e.target.value;salvar();render();};
 document.getElementById("btnRename").onclick=()=>{const n=prompt("Nome do reino:",S.nome);if(n&&n.trim()){S.nome=n.trim();salvar();render();}};
@@ -2099,8 +2188,9 @@ document.getElementById("btnFundar").onclick=fundar;
 document.getElementById("btnRolar").onclick=()=>selecionarOrigem(ORIGENS[Math.floor(Math.random()*ORIGENS.length)].id);
 document.getElementById("btnAddExp").onclick=addExp;
 document.getElementById("diasPE").onchange=e=>{const v=parseInt(e.target.value);if(v>0){S.diasPorEstacao=v;salvar();}};
-document.getElementById("btnHardReset").onclick=()=>{if(confirm("Apagar TUDO e recomeçar do zero?")){try{localStorage.removeItem("kingdom_v12");}catch(e){}S=estadoInicial();selOrigem=null;selHex=null;expAtiva=null;salvar();render();}};
+document.getElementById("btnHardReset").onclick=()=>{if(confirm("Apagar TUDO e recomeçar do zero?")){try{localStorage.removeItem("kingdom_v12");}catch(e){}S=estadoInicial();selOrigem=null;selHex=null;expAtiva=null;eventoPopupFila=[];mostrarProximoEventoPopup();salvar();render();}};
 document.getElementById("btnTema").onclick=alternarTema;
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&popupEventoAberto())fecharEventoPopup();});
 aplicarTema();
 document.getElementById("btnNomeReino").onclick=()=>{document.getElementById("nomeInput").value=nomeReinoAleatorio();};
 document.getElementById("btnNomeDado").onclick=()=>{S.nome=nomeReinoAleatorio();salvar();render();};
