@@ -22,7 +22,23 @@ Crise: `fome`, `desastre`, `bandidos`, `revolta`, `praga_lavoura`, `incendio`
 ## IDs dos ativos — `img/assets/<id>.jpg`
 
 `fazendas`, `taverna`, `forte`, `quartel`, `porto`, `estabulo`, `mina`, `ferreiro`, `cabana_cacador`, `guilda`, `guilda_anoes`, `herbalista`, `templo`, `biblioteca`, `hospital`, `torre_mago`, `armazem`
-(todos preenchidos exceto `armazem`, novo — 2026-07-31)
+(as 17 regeradas do zero no selo v2 em 2026-08-04, com evolução por nível — ver seção abaixo)
+
+### Evolução por nível (2026-08-04)
+
+Cada ativo agora pode ter até 3 imagens, uma por estágio de evolução — o app escolhe sozinho a certa pro nível atual da propriedade (`tierArte`/`caminhosArteAtivo` em `index.html`), com fallback em cadeia pro estágio anterior se a imagem daquele estágio ainda não existir:
+
+| Arquivo | Estágio | Nível da propriedade |
+|---|---|---|
+| `<id>.jpg` | Nível 1 (recém-erguida) | 1 |
+| `<id>_n2.jpg` | Consolidada | 2–3 |
+| `<id>_n3.jpg` | Grandiosa | 4+ |
+
+As 17 propriedades já têm os 3 estágios completos.
+
+### Cinco construções de teto (2026-08-04)
+
+`muralhas`, `castelo`, `arsenal_naval`, `mercado`, `catedral` — já em `ATIVOS`, com arte completa (3 estágios cada). Mecânica pensada pra serem sempre a compra mais cara e mais exigente do catálogo: custo acima de qualquer propriedade anterior (150-270, o teto de antes era 135) e múltiplos atributos altos ao mesmo tempo como requisito — nenhuma delas destrava investindo cedo numa coisa só. Detalhe de cada uma no `index.html` (array `ATIVOS`) e prompts de arte em `Direcao de Arte e Prompts.md`.
 
 (nota 2026-07-31: `posto_avancado` deixou de ser propriedade da capital — virou um marco no
 hexcrawl, sem arte própria em `img/assets/` por enquanto; a imagem antiga `posto_avancado.jpg`

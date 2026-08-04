@@ -403,11 +403,15 @@ const SETTLE={
   desconhecido:{pode:false}};
 const ROAD=45;
 const NIVEIS_ASSENT=["Arraial","Vila","Cidade","Grande Cidade","Metrópole"];
-/* Influência começa em 0 para todas as origens: vocês são um posto afastado dentro de um reino maior.
+/* Influência começa em 0 para quase todas as origens: vocês são um posto afastado dentro de um
+   reino maior. Exceção: Terras Alagadas (pantano) começa com 1 — população inicial dela (8) é
+   exatamente o custo dos 4 aventureiros padrão (ver CUSTO_POP_AVENTUREIRO), então sem essa
+   migração puxada por influência (ver tentarCrescimentoPopulacao) ela ficaria travada com
+   população livre 0 por meses, sem conseguir alocar mão de obra em nenhuma propriedade.
    População inicial nunca é menor que 8: com o custo de 2 população por aventureiro (ver
    CUSTO_POP_AVENTUREIRO/aventureirosMax), isso garante de cara um grupo de 4 jogadores completo
-   (8 pop = 4 aventureiros) com uma margem sobrando pra já alocar gente nas primeiras construções,
-   em vez de travar o grupo mal o reino é fundado. */
+   (8 pop = 4 aventureiros) — nas origens com população 9-10 ainda sobra uma margem pra já alocar
+   gente nas primeiras construções; em Terras Alagadas (8) não sobra, daí o pingo de influência. */
 const ORIGENS=[
   {id:"planicie",nome:"Planícies Férteis",terreno:"campo",desc:"Terra farta e aberta. Rica e populosa, mas difícil de defender.",
     attr:{militar:2,economia:5,influencia:0,populacao:10}},
@@ -418,7 +422,7 @@ const ORIGENS=[
   {id:"litoral",nome:"Enseada Litorânea",terreno:"costa",desc:"Portos naturais e rotas de comércio abertas ao mundo.",
     attr:{militar:2,economia:4,influencia:0,populacao:9}},
   {id:"pantano",nome:"Terras Alagadas",terreno:"pantano",desc:"Brejais isolados, pobres, mas de defesa natural e muito mistério.",
-    attr:{militar:3,economia:2,influencia:0,populacao:8}},
+    attr:{militar:3,economia:2,influencia:1,populacao:8}},
   {id:"estepe",nome:"Estepe Aberta",terreno:"estepe",desc:"Planaltos de vento e pasto, terra de cavaleiros.",
     attr:{militar:5,economia:3,influencia:0,populacao:8}}];
 
@@ -483,6 +487,16 @@ const ATIVOS=[
   {id:"biblioteca",nome:"Biblioteca",img:"biblioteca.jpg",custo:84,mods:{influencia:1},reqAttr:{economia:4},recruta:{sugestao:"mago / estudioso arcano"},upkeep:1},
   {id:"hospital",nome:"Hospital",img:"hospital.jpg",custo:90,mods:{populacao:1,moral:1},upkeep:1},
   {id:"torre_mago",nome:"Torre do Mago",img:"torre_mago.jpg",custo:135,mods:{influencia:1},reqAttr:{influencia:2},recruta:{sugestao:"aprendiz de mago"},upkeep:1.4,especial:"previsao"},
+  /* Lote de 2026-08-04 (pedido do Thiago: arte já pronta, mecânica decidida por mim — "sempre
+     equilibrado e custoso"): cinco construções de teto, acima do que qualquer propriedade custava
+     até aqui (135, Torre do Mago). Todas exigem múltiplos atributos altos ao mesmo tempo (não dá
+     pra destravar cedo investindo só numa coisa) e têm upkeep mais pesado que a média — o objetivo
+     é serem prêmio de reino já consolidado, nunca a primeira compra óbvia. */
+  {id:"muralhas",nome:"Muralhas",img:"muralhas.jpg",custo:150,mods:{militar:1,moral:1},reqAttr:{militar:3,populacao:5},upkeep:1.3},
+  {id:"castelo",nome:"Castelo",img:"castelo.jpg",custo:270,mods:{militar:2,influencia:1,moral:1},reqAttr:{militar:6,influencia:3,economia:6},recruta:{sugestao:"cavaleiro / capitão da guarda"},upkeep:2.2},
+  {id:"arsenal_naval",nome:"Arsenal Naval",img:"arsenal_naval.jpg",custo:195,mods:{militar:1,economia:1},reqAttr:{economia:7,militar:3},recruta:{sugestao:"marinheiro / capitão de navio"},upkeep:1.6},
+  {id:"mercado",nome:"Mercado",img:"mercado.jpg",custo:150,mods:{economia:2,influencia:1},reqAttr:{economia:6,populacao:6},upkeep:1},
+  {id:"catedral",nome:"Catedral",img:"catedral.jpg",custo:180,mods:{influencia:1,moral:2},reqAttr:{influencia:4,economia:5},recruta:{sugestao:"clérigo / paladino"},upkeep:1.5},
   /* Armazém: dada de graça na fundação (ver fundar()), não aparece na loja (oculto:true) e não
      entra em obra (nasce nivel:1). Guarda itens/animais comprados sem destino — ver comprarItemLoja,
      renderArmazem, enviarDoArmazem. Capacidade cresce com o nível (capacidadeArmazem). */
@@ -634,7 +648,7 @@ function comprarItemLoja(propUid,itemId,destino){
 /* ============ ESTADO ============ */
 function estadoInicial(){return{fundado:false,nome:"Reino",origem:null,estacaoIdx:0,ano:1,modo:"completo",dificuldade:"duro",feed:[],eventos:[],
   attr:{militar:0,economia:0,influencia:0,populacao:0},
-  med:{tesouro:120,moral:5,notoriedade:1,ameaca:1},ativos:[],pendentes:[],hexes:[],expRest:0,
+  med:{tesouro:150,moral:5,notoriedade:1,ameaca:1},ativos:[],pendentes:[],hexes:[],expRest:0,
   dias:0,diasPorEstacao:90,personagens:[],expedicoes:[]};}
 function uid(){return Math.random().toString(36).slice(2,8);}
 function esc(s){return(s||"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");}
@@ -1138,15 +1152,20 @@ function avancarImpostosCortados(){
 }
 /* Saques: Ameaça acima do Militar significa gente saqueando território desprotegido —
    tira Tesouro direto, escalando com o tamanho do descontrole (não é garantido toda semana,
-   só uma chance, pra não virar um imposto automático). */
+   só uma chance, pra não virar um imposto automático). Muralhas ativas (mão de obra alocada)
+   cortam a perda pela metade — é o diferencial dela sobre Forte/Quartel (que só sobem Militar
+   e portanto só evitam o gap, nunca amenizam o estrago quando ele já aconteceu). */
+function muralhasAtivas(){return S.ativos.some(o=>o.id==="muralhas"&&o.nivel>=1&&(o.trabalhadores||[]).length>0);}
 function checarSaques(){
   const gap=medTotal("ameaca")-attrTotal("militar");
   if(gap<=0)return;
   const chance=Math.min(0.6,0.15+gap*0.08);
   if(Math.random()<chance){
-    const perda=Math.round((5+gap*4)*(0.7+Math.random()*0.6));
+    let perda=Math.round((5+gap*4)*(0.7+Math.random()*0.6));
+    const comMuralhas=muralhasAtivas();
+    if(comMuralhas)perda=Math.round(perda*0.5);
     S.med.tesouro=Math.max(0,S.med.tesouro-perda);
-    feedPush(`⚔ Saqueadores atacam com a Ameaça (${medTotal("ameaca")}) acima do Militar (${attrTotal("militar")}): −${perda} Tesouro.`);
+    feedPush(`⚔ Saqueadores atacam com a Ameaça (${medTotal("ameaca")}) acima do Militar (${attrTotal("militar")}): −${perda} Tesouro.${comMuralhas?" (Muralhas seguraram metade do estrago)":""}`);
   }
 }
 /* Moral baixa: chance de rebelião/desordem atrapalhar a coleta de impostos por um tempo
@@ -1287,7 +1306,7 @@ const AMEACA_MORAL_LIMIAR=6;
    saqueadores, caçadores de recompensa e rivais de olho no que ele tem. Isso é ALÉM da pressão
    de sítios — é o motivo de a Ameaça também crescer num reino "manso" que só acumula
    Tesouro/Notoriedade sem nunca abrir um sítio de perigo. Limiares calibrados pra não disparar
-   logo no começo (tesouro inicial é 120): só pesa de verdade quando o reino já engordou de vez.
+   logo no começo (tesouro inicial é 150): só pesa de verdade quando o reino já engordou de vez.
    Cada "ponto" soma 15% de chance de +1 Ameaça na checagem semanal (DEFESA_LOCAL_CADA) — reino
    rico E famoso (4 pontos) tem 60% de chance por semana, reino só modestamente rico ou só um
    pouco notório (1 ponto) tem 15%. */
@@ -1364,7 +1383,7 @@ function climaTexto(){const moral=medTotal("moral"),ameaca=medTotal("ameaca");
   return `Clima da próxima estação ${t} — Moral ${moral}, Ameaça ${ameaca}.`;}
 /* Ícone do Tesouro cresce com o cofre e encolhe perto de zero (pedido do Thiago). Curva em raiz
    quadrada (não linear) pra não disparar de tamanho logo nos primeiros 100 de Tesouro — calibrada
-   pra ficar do tamanho original (42px) perto do Tesouro inicial (120) e saturar em 72px pra
+   pra ficar do tamanho original (42px) perto do Tesouro inicial (150) e saturar em 72px pra
    reinos bem ricos; o mínimo de 18px garante que o ícone nunca suma de vez, só encolhe. */
 const TESOURO_ICON_MIN=18,TESOURO_ICON_MAX=72,TESOURO_ICON_K=2.0;
 function tamanhoIconeTesouro(v){return Math.round(clamp(TESOURO_ICON_MIN+TESOURO_ICON_K*Math.sqrt(Math.max(0,v)),[TESOURO_ICON_MIN,TESOURO_ICON_MAX]));}
@@ -1478,19 +1497,47 @@ function mostrarProximoEventoPopup(){
 }
 function fecharEventoPopup(){if(eventoPopupFila.length)eventoPopupFila.shift();mostrarProximoEventoPopup();}
 
+/* Textura procedural dos hexes: em vez de preenchimento sólido por terreno, cada tipo ganha um
+   padrão SVG (grama, copas de árvore, rocha, ondas, junco de pântano, capim de estepe) numa
+   variação mais escura/clara da própria cor já calibrada em TERRENOS — nenhuma imagem nova
+   precisa ser gerada. patternUnits="userSpaceOnUse" ancora o padrão nas coordenadas absolutas
+   do SVG (não em cada hex individualmente), então o textura "flui" entre hexes vizinhos do
+   mesmo terreno como um campo contínuo, em vez de repetir centrado em cada hexágono. Oculto
+   (fog of war) fica sem textura de propósito — não vaza pista nenhuma sobre o terreno real. */
+function shadeColor(hex,pct){const n=parseInt(hex.slice(1),16);
+  let r=Math.max(0,Math.min(255,(n>>16)+Math.round(2.55*pct)));
+  let g=Math.max(0,Math.min(255,((n>>8)&0xff)+Math.round(2.55*pct)));
+  let b=Math.max(0,Math.min(255,(n&0xff)+Math.round(2.55*pct)));
+  return"#"+(0x1000000+r*0x10000+g*0x100+b).toString(16).slice(1);}
+function terrenoTexturaDefs(){
+  return Object.keys(TERRENOS).filter(k=>k!=="desconhecido").map(k=>{
+    const cor=TERRENOS[k].cor,d=shadeColor(cor,-16),d2=shadeColor(cor,-28),l=shadeColor(cor,14);
+    const corpo={
+      campo:`<path d="M1,9 L2,5 M4,9 L5,4 M7,9 L6,5" stroke="${d}" stroke-width="0.6" fill="none" opacity="0.55"/>`,
+      floresta:`<circle cx="3" cy="3" r="1.8" fill="${d}" opacity="0.55"/><circle cx="9" cy="7.5" r="2.1" fill="${d2}" opacity="0.5"/><circle cx="5.5" cy="10" r="1.4" fill="${l}" opacity="0.3"/>`,
+      montanha:`<path d="M0,10 L3,4 L6,9 L9,3 L12,8" stroke="${d2}" stroke-width="0.9" fill="none" opacity="0.55"/><path d="M0,4 L2,1 L4,3" stroke="${l}" stroke-width="0.6" fill="none" opacity="0.3"/>`,
+      costa:`<path d="M0,2 Q3.5,0 7,2 T14,2" stroke="${l}" stroke-width="0.7" fill="none" opacity="0.5"/><path d="M0,6 Q3.5,4 7,6 T14,6" stroke="${d}" stroke-width="0.6" fill="none" opacity="0.4"/>`,
+      pantano:`<ellipse cx="4" cy="8" rx="2.4" ry="1.2" fill="${d}" opacity="0.4"/><path d="M9,10 L9,5 M10.5,10 L10.5,6" stroke="${l}" stroke-width="0.6" opacity="0.4"/>`,
+      estepe:`<path d="M1,3 L4,2 M6,7 L9,6 M2,9 L5,8.3" stroke="${d}" stroke-width="0.6" opacity="0.4"/>`
+    }[k]||"";
+    const dims={campo:[10,10],floresta:[12,12],montanha:[12,12],costa:[14,8],pantano:[12,12],estepe:[12,10]}[k]||[10,10];
+    return`<pattern id="tex-${k}" width="${dims[0]}" height="${dims[1]}" patternUnits="userSpaceOnUse"><rect width="${dims[0]}" height="${dims[1]}" fill="${cor}"/>${corpo}</pattern>`;
+  }).join("");
+}
 function renderMapa(){const svg=document.getElementById("hexmap");if(!svg)return;
   const _ea=getExp(expAtiva),_apos=_ea?getHex(_ea.q,_ea.r):null;
   const pts=S.hexes.map(h=>({h,...axialToPx(h.q,h.r)}));
   const xs=pts.map(p=>p.x),ys=pts.map(p=>p.y),minX=Math.min(...xs),minY=Math.min(...ys),maxX=Math.max(...xs),maxY=Math.max(...ys);
   const pad=HEXSIZE+8,W=(maxX-minX)+pad*2,H=(maxY-minY)+pad*2;svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
-  let out="";const centers={};pts.forEach(({h,x,y})=>{const cx=x-minX+pad,cy=y-minY+pad;centers[h.q+","+h.r]={cx,cy};
+  let out=`<defs>${terrenoTexturaDefs()}</defs>`;const centers={};pts.forEach(({h,x,y})=>{const cx=x-minX+pad,cy=y-minY+pad;centers[h.q+","+h.r]={cx,cy};
     const oc=h.estado==="oculto";const showT=!oc||papel==="mestre";const t=TERRENOS[showT?h.terreno:"desconhecido"];
     const corners=[];for(let i=0;i<6;i++){const a=Math.PI/180*(60*i-30);corners.push(`${(cx+HEXSIZE*Math.cos(a)).toFixed(1)},${(cy+HEXSIZE*Math.sin(a)).toFixed(1)}`);}
     const isSel=selHex&&selHex[0]===h.q&&selHex[1]===h.r;
     let stroke=h.capital?"#c9a24b":(h.estado==="incorporado"?"#8a7a4a":(h.posto?"#a68f5a":"#00000060")),sw=h.capital?3:(h.posto?1.5:1);
     if(_apos&&hexDist(_apos,h)===1&&h.estado!=="oculto"){stroke="#efe7d8";sw=2.5;}
     const dim=oc?'opacity="0.55"':(h.estado==="conhecido"?'opacity="0.8"':"");
-    out+=`<polygon class="hex ${isSel?'sel':''}" points="${corners.join(" ")}" fill="${t.cor}" stroke="${stroke}" stroke-width="${sw}" ${dim} onclick="clicaHex(${h.q},${h.r})"></polygon>`;
+    const fillHex=showT?`url(#tex-${h.terreno})`:t.cor;
+    out+=`<polygon class="hex ${isSel?'sel':''}" points="${corners.join(" ")}" fill="${fillHex}" stroke="${stroke}" stroke-width="${sw}" ${dim} onclick="clicaHex(${h.q},${h.r})"></polygon>`;
     out+=`<text class="hexsym" x="${cx}" y="${cy+5}" text-anchor="middle">${h.capital?"★":t.sim}</text>`;
     if(h.constr.length)out+=`<text class="hexbadge" x="${cx+HEXSIZE*0.5}" y="${cy-HEXSIZE*0.42}" text-anchor="middle">⌂${h.constr.length}</text>`;
     if(h.estado==="incorporado"&&!h.capital)out+=`<text class="hexbadge" x="${cx}" y="${(cy-HEXSIZE*0.4).toFixed(1)}" text-anchor="middle" style="font-size:11px;fill:#e8dcc0">⌂${h.nivelAssent||1}</text>`;
@@ -1951,6 +1998,24 @@ function renderMaoDeObra(o,a){
     <button class="ghost" style="font-size:11px;padding:3px 8px;margin-top:6px" onclick="alocarTrabalhador('${o.uid}')">+ alocar 1 população</button>
   </div>`;
 }
+/* Arte por estágio de evolução (task pedida pelo Thiago, 2026-08-04): cada propriedade construída
+   pode ter até 3 imagens — <id>.jpg (nível 1, base — é o arquivo que já existe hoje pra tudo),
+   <id>_n2.jpg (consolidada, níveis 2-3) e <id>_n3.jpg (grandiosa, nível 4+). Nada quebra pra quem
+   só tem o arquivo base: imgFallback tenta a imagem do estágio certo e, se não existir ainda,
+   desce pro estágio anterior até chegar na base (mesmo comportamento de sempre) ou remover o
+   <img> se nem a base existir. Ver "Direção de Arte e Prompts.md" pros prompts de cada estágio. */
+function tierArte(nivel){return nivel>=4?3:(nivel>=2?2:1);}
+function caminhosArteAtivo(a,nivel){
+  const t=tierArte(nivel),ps=[];
+  if(t>=3)ps.push(`img/assets/${a.id}_n3.jpg`);
+  if(t>=2)ps.push(`img/assets/${a.id}_n2.jpg`);
+  ps.push(`img/assets/${a.img}`);
+  return ps;
+}
+function imgFallback(img){
+  let fb=[];try{fb=JSON.parse(img.dataset.fb||"[]");}catch(e){}
+  if(fb.length){img.src=fb.shift();img.dataset.fb=JSON.stringify(fb);}else img.remove();
+}
 function renderPropriedades(){const box=document.getElementById("props");if(!box)return;
   if(!S.ativos.length){box.innerHTML=`<span class="hint" style="margin:0">Nenhuma propriedade ainda. Compre na loja acima; elas aparecem aqui e podem evoluir.</span>`;return;}
   box.innerHTML=S.ativos.map(o=>{const a=ATIVOS.find(x=>x.id===o.id);if(!a)return"";
@@ -1971,7 +2036,8 @@ function renderPropriedades(){const box=document.getElementById("props");if(!box
       const negativo=(o.evento.fatorBonus||0)<1;
       eventoHtml=`<div class="pm" style="color:${negativo?"var(--bad)":"var(--good)"}">${negativo?"☣":"✦"} ${esc(o.evento.nome)}: ${o.evento.diasRestantes}d restantes${negativo?" (bônus desativado)":" (bônus turbinado)"}</div>`;
     }
-    return `<div class="prop"><div class="pimg"><span class="ph">img/assets/${a.img}</span><img src="img/assets/${a.img}" onerror="this.remove()"></div>
+    const artePaths=caminhosArteAtivo(a,Math.max(1,o.nivel));
+    return `<div class="prop"><div class="pimg"><span class="ph">${artePaths[0]}</span><img src="${artePaths[0]}" data-fb='${esc(JSON.stringify(artePaths.slice(1)))}' onerror="imgFallback(this)"></div>
       <div class="pb"><div class="pn">${a.nome} <span class="pnv">Nível ${o.nivel}</span></div>
       ${obraHtml}${eventoHtml}
       <div class="pm">${modsHtml}${o.nivel>=1?`${a.instr?" · ⚑ "+a.instrTxt:""}${a.cap?" · ⚒ "+a.capTxt:""}${a.recruta?" · ♟ treina: "+a.recruta.sugestao:""}`:""}</div>

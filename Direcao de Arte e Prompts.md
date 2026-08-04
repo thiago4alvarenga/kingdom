@@ -122,3 +122,197 @@ Salvar os 3 recortes como: `revolta.jpg`, `praga_lavoura.jpg`, `incendio.jpg` (d
 Me manda os 4 arquivos de sheet (ou já recortados, se preferir recortar do seu lado) que eu: recorto certinho (mesmo pipeline de sempre — Pillow, trim por threshold, remove qualquer selo de marca d'água que o gerador colocar), salvo em `img/cards/` com o nome de cada `id`, e confirmo no harness/visualmente que apareceram nos cards certos. Nenhuma mudança de código é necessária — o app já procura essas imagens sozinho.
 
 Se o resultado do selo v2 agradar, o próximo passo natural é regerar as 17 propriedades (`img/assets/`) no mesmo estilo pra ficar tudo consistente — aí sim vale um lote de prompts dedicado só pra elas, do mesmo jeito (3-4 por imagem). Não fiz isso ainda de propósito, pra não gastar geração numa leva grande antes de validar se o v2 é mesmo a direção certa.
+
+## Atualização (2026-08-04): hexes com textura (código, sem arte nova) + Lote 3 — as 17 propriedades do zero com evolução por nível, Muralhas e ideias novas
+
+### Hexmap: textura por terreno, feita em código
+
+O v2 foi validado nas cartas, então topei regerar as propriedades do zero — mas antes disso, o hexmap: em vez de esperar arte nova, apliquei uma textura **procedural em SVG** direto no `renderMapa()` (função `terrenoTexturaDefs()`). Cada terreno ganhou um padrão (capim no campo, copas de árvore na floresta, veios de rocha na montanha, ondas na costa, junco no pântano, capim de vento na estepe), desenhado numa variação mais escura/clara da cor que já estava calibrada em `TERRENOS` — zero imagem nova, zero dependência de geração. Hex oculto (fog of war) continua sem textura de propósito, pra não vazar pista do terreno real. Já testei sintaxe e gerei um preview SVG isolado pra você bater o olho antes de abrir o app de verdade.
+
+Se depois de ver isso na mesa você achar que vale a pena ir além do procedural — tiles pintados de verdade por terreno —, o `img/README.md` já reserva `img/hex/<terreno>.jpg` pra isso; é só avisar que eu preparo os prompts desse lote também (campo, floresta, montanha, costa, pântano, estepe — 6 tiles, provavelmente 1 imagem só com os 6 lado a lado).
+
+### Convenção de arquivo pra evolução por nível (já implementada no código)
+
+Como pediu pra refletir a evolução (uma Taverna simples que vai crescendo), toda propriedade agora pode ter até **3 imagens por estágio**, e o app já sabe escolher a certa sozinho:
+
+- `img/assets/<id>.jpg` — **Nível 1** (recém-erguida). É o arquivo que já existe hoje pra 16 das 17 propriedades — nada precisa ser trocado até você gerar os estágios novos.
+- `img/assets/<id>_n2.jpg` — **Consolidada** (níveis 2-3).
+- `img/assets/<id>_n3.jpg` — **Grandiosa** (nível 4 em diante — como propriedade não tem teto de nível, esse estágio vale pra "4 ou mais").
+
+`caminhosArteAtivo()`/`imgFallback()` tentam o estágio certo pro nível atual e, se o arquivo ainda não existir, descem pro estágio anterior até chegar na base — exatamente como o app já se comporta hoje quando falta uma imagem, só que agora em cadeia. Ou seja: **dá pra gerar aos poucos**, propriedade por propriedade, estágio por estágio, sem nunca deixar o app quebrado no meio do caminho. Já testei no harness (Node) que a escolha de caminho e o fallback funcionam certo.
+
+### Selo de estilo — segue o v2 (já validado nas cartas)
+
+> **Selo de estilo v2 (usar em tudo abaixo):** *black and white pixel art illustration, retro 16-bit game sprite aesthetic, visible pixel blocks with no smooth anti-aliasing, dithered halftone shading limited to pure black, white and 2–3 shades of gray, monochrome woodcut engraving linework, clean white background, no color*
+
+Se na hora de ver o resultado achar que prefere voltar pro v1 (xilogravura/meio-tom, sem o ar de sprite de 16-bit), é só trocar esse trecho pelo selo v1 lá no topo do documento — o resto do prompt (composição, cena) não muda.
+
+### As 17 propriedades — cada uma em 3 estágios (1 imagem por propriedade, 3 painéis lado a lado)
+
+Cada prompt abaixo gera **uma imagem só com 3 vinhetas lado a lado** (nível 1 · consolidada · grandiosa), a mesma construção evoluindo — pra manter a silhueta reconhecível entre os estágios, é melhor gerar as 3 juntas do que separadas. Formato sugerido: proporção final de cada vinheta ~4:3 (é o que `img/README.md` já pede pra `img/assets/`), então a imagem toda sai bem larga (~12:3) — recorta em 3 depois, mesmo pipeline de sempre.
+
+**1. Fazendas** (`fazendas.jpg` / `fazendas_n2.jpg` / `fazendas_n3.jpg`)
+> A single wide image divided into three side-by-side square vignette panels showing the same farmstead across three stages of growth, each panel separated by a thin white gutter and hairline border, no bleed between panels, consistent style across all three:
+> 1. Left: a tiny single wooden farmhouse beside one small fenced crop field, a low stone well, a scarecrow.
+> 2. Center: a working farmstead with a proper barn, a hay cart, an expanded plowed field, a small windmill rising.
+> 3. Right: a full grain estate with a stone farmhouse, a tall windmill and grain silo, sprawling tilled fields to the horizon, loaded wagons, livestock pens.
+> [selo de estilo v2]
+
+**2. Taverna** (`taverna.jpg` / `taverna_n2.jpg` / `taverna_n3.jpg`)
+> Same three-panel layout, the same tavern building evolving across three stages:
+> 1. Left: a tiny one-room timber tavern, a simple hanging sign, one barrel by the door.
+> 2. Center: a two-story timber-and-stone tavern with a small stable-yard, horses tied outside, warm lantern light in the windows.
+> 3. Right: a grand sprawling inn with multiple wings, a courtyard terrace, banners, a crowd of travelers and loaded carts arriving.
+> [selo de estilo v2]
+
+**3. Forte** (`forte.jpg` / `forte_n2.jpg` / `forte_n3.jpg`)
+> Same three-panel layout, the same fort evolving across three stages:
+> 1. Left: a small wooden palisade fort with one watchtower and a barred gate.
+> 2. Center: a stone-walled fort with two corner towers and a raised drawbridge, banners flying.
+> 3. Right: a full fortress with thick battlements, several towers, a portcullis, siege-ready ramparts.
+> [selo de estilo v2]
+
+**4. Quartel** (`quartel.jpg` / `quartel_n2.jpg` / `quartel_n3.jpg`)
+> Same three-panel layout, the same barracks evolving across three stages:
+> 1. Left: a modest single timber barracks hall beside a tiny drilling yard with one practice dummy.
+> 2. Center: a stone barracks with an attached armory shed, soldiers training in formation in a larger yard.
+> 3. Right: a full military compound with several barracks buildings, an armory, ranks of soldiers on a parade ground.
+> [selo de estilo v2]
+
+**5. Porto** (`porto.jpg` / `porto_n2.jpg` / `porto_n3.jpg`)
+> Same three-panel layout, the same port evolving across three stages:
+> 1. Left: a small wooden dock with a single fishing boat and a modest shed.
+> 2. Center: a stone quay with two merchant ships docked, stacked cargo crates, a small lighthouse rising.
+> 3. Right: a bustling harbor with multiple piers, tall-masted trade ships, a working lighthouse, cranes loading cargo.
+> [selo de estilo v2]
+
+**6. Estábulos** (`estabulo.jpg` / `estabulo_n2.jpg` / `estabulo_n3.jpg`)
+> Same three-panel layout, the same stables evolving across three stages:
+> 1. Left: a small open-sided timber stable with one horse.
+> 2. Center: an enclosed stable building with a fenced paddock, a few horses and a cart.
+> 3. Right: a grand stable complex with multiple paddocks, a riding yard, a falcon perched on a post, a warhorse being fitted with armor.
+> [selo de estilo v2]
+
+**7. Mineração** (`mina.jpg` / `mina_n2.jpg` / `mina_n3.jpg`)
+> Same three-panel layout, the same mine evolving across three stages:
+> 1. Left: a simple mine entrance cut into a hillside, a wooden support beam, one ore cart.
+> 2. Center: a developed mine with a wooden headframe and winch, rail tracks, several ore carts.
+> 3. Right: a large mining operation with a tall headframe, multiple tunnel entrances, a smelting furnace venting smoke, stacked ore.
+> [selo de estilo v2]
+
+**8. Ferreiro** (`ferreiro.jpg` / `ferreiro_n2.jpg` / `ferreiro_n3.jpg`)
+> Same three-panel layout, the same forge evolving across three stages:
+> 1. Left: a small open-air forge with one anvil under a lean-to roof.
+> 2. Center: an enclosed smithy with a proper chimney, tool racks, a small display of basic weapons.
+> 3. Right: a grand forge-hall with multiple furnaces, apprentices working, a showroom wall of fine weapons and armor.
+> [selo de estilo v2]
+
+**9. Cabana do Caçador** (`cabana_cacador.jpg` / `cabana_cacador_n2.jpg` / `cabana_cacador_n3.jpg`)
+> Same three-panel layout, the same lodge evolving across three stages:
+> 1. Left: a tiny one-room log cabin, a single pelt hung outside, a bow leaning by the door.
+> 2. Center: a bigger log lodge with a drying rack of pelts, hunting trophies on the wall, a dog resting outside.
+> 3. Right: a proper hunting lodge with a large trophy hall, several drying racks, hounds, a stocked wall of bows and traps.
+> [selo de estilo v2]
+
+**10. Guilda** (`guilda.jpg` / `guilda_n2.jpg` / `guilda_n3.jpg`)
+> Same three-panel layout, the same guildhall evolving across three stages:
+> 1. Left: a modest single-story guildhall with a simple sign and a small noticeboard.
+> 2. Center: a two-story guildhall with a busy noticeboard of postings, a few adventurers gathered outside.
+> 3. Right: a grand guild hall with towers and banners of many trades, a bustling courtyard of merchants and adventurers.
+> [selo de estilo v2]
+
+**11. Guilda de Anões** (`guilda_anoes.jpg` / `guilda_anoes_n2.jpg` / `guilda_anoes_n3.jpg`)
+> Same three-panel layout, the same dwarven hall evolving across three stages:
+> 1. Left: a small stone lodge built into a rock face, dwarven runes carved at the entrance.
+> 2. Center: a proper dwarven hall with carved stone columns, forge-light glowing from within, ore samples on display.
+> 3. Right: a grand dwarven guildhall carved deep into the mountain, a monumental stone archway, glowing forges, dwarven banners.
+> [selo de estilo v2]
+
+**12. Herbalista** (`herbalista.jpg` / `herbalista_n2.jpg` / `herbalista_n3.jpg`)
+> Same three-panel layout, the same herbalist's home evolving across three stages:
+> 1. Left: a small thatched hut with herbs drying outside, a modest garden patch.
+> 2. Center: a proper herbalist's cottage with a larger garden, jars visible through the window, a small greenhouse beginning.
+> 3. Right: a grand apothecary house with a sprawling botanical garden, a greenhouse, countless hanging herb bundles and jars.
+> [selo de estilo v2]
+
+**13. Templo** (`templo.jpg` / `templo_n2.jpg` / `templo_n3.jpg`)
+> Same three-panel layout, the same temple evolving across three stages:
+> 1. Left: a small wooden shrine with a single carved symbol and a modest altar.
+> 2. Center: a stone chapel with a bell tower, a hint of stained glass, a small congregation gathering.
+> 3. Right: a grand cathedral-like temple with towering spires, an ornate façade, a large gathered crowd.
+> [selo de estilo v2]
+
+**14. Biblioteca** (`biblioteca.jpg` / `biblioteca_n2.jpg` / `biblioteca_n3.jpg`)
+> Same three-panel layout, the same library evolving across three stages:
+> 1. Left: a small single-room study with a few shelves and one desk with a candle.
+> 2. Center: a proper library building with tall shelves, a reading room, a scholar at a lectern.
+> 3. Right: a grand archive tower with soaring shelves, a spiral staircase, scholars and mages studying, a domed observatory hinted above.
+> [selo de estilo v2]
+
+**15. Hospital** (`hospital.jpg` / `hospital_n2.jpg` / `hospital_n3.jpg`)
+> Same three-panel layout, the same infirmary evolving across three stages:
+> 1. Left: a small wooden infirmary hut, one cot, a healer tending a patient.
+> 2. Center: a proper stone hospital building with several beds, herb-drying racks, a small healer's garden.
+> 3. Right: a grand hospital complex with multiple wards, a chapel wing, healers and clergy tending many patients.
+> [selo de estilo v2]
+
+**16. Torre do Mago** (`torre_mago.jpg` / `torre_mago_n2.jpg` / `torre_mago_n3.jpg`)
+> Same three-panel layout, the same tower evolving across three stages:
+> 1. Left: a small modest stone tower with a single glowing window.
+> 2. Center: a taller tower with an observatory platform, arcane runes carved into the stone, a faint magical glow.
+> 3. Right: a grand spiraling arcane tower with multiple glowing windows, a floating arcane apparatus orbiting the top, crackling magical energy.
+> [selo de estilo v2]
+
+**17. Armazém** (`armazem.jpg` / `armazem_n2.jpg` / `armazem_n3.jpg`)
+> Same three-panel layout, the same warehouse evolving across three stages:
+> 1. Left: a small single-room timber storehouse with a few crates and sacks.
+> 2. Center: a proper warehouse with stacked crates and barrels, a loading platform.
+> 3. Right: a sprawling warehouse complex with multiple storage buildings, a busy loading yard with carts and porters.
+> [selo de estilo v2]
+
+### Muralhas — mecânica decidida (2026-08-04)
+
+Já está em `ATIVOS`: custo 150, +1 Militar/+1 Moral por nível, exige Militar 3 e População 5 pra começar a construir, upkeep 1.3. Diferencial dela sobre Forte/Quartel: com Muralhas ativas (mão de obra alocada), `checarSaques()` corta a perda de Tesouro de um saque pela metade — Forte/Quartel só sobem Militar (evitam o saque de acontecer), Muralhas amenizam o estrago quando ele já aconteceu.
+
+**Muralhas** (`muralhas.jpg` / `muralhas_n2.jpg` / `muralhas_n3.jpg`)
+> Same three-panel layout, the same settlement wall evolving across three stages:
+> 1. Left: a simple wooden palisade fence encircling a small village, one plain gate.
+> 2. Center: a stone wall with crenellations and a watchtower at intervals, a reinforced gatehouse.
+> 3. Right: a grand fortified wall with tall towers, murder holes, banners flying, a massive reinforced double gatehouse.
+> [selo de estilo v2]
+
+### Outras propriedades novas — mecânica decidida (2026-08-04)
+
+Você citou Castelo e Porto — o Porto já existe (coberto acima); pra "porto grande" a ideia mais natural foi um Arsenal Naval separado (estaleiro/frota de guerra), diferente do porto comercial. As duas ideias bônus (Mercado, Catedral) também entraram em `ATIVOS`. As cinco (Muralhas + estas quatro) têm uma coisa em comum, de propósito: custo acima de qualquer propriedade anterior (o teto era 135, Torre do Mago) e múltiplos atributos altos ao mesmo tempo como requisito — nenhuma dá pra destravar cedo investindo só numa coisa.
+
+**Castelo** (`castelo.jpg` / `castelo_n2.jpg` / `castelo_n3.jpg`) — custo 270 (a mais cara do jogo), +2 Militar/+1 Influência/+1 Moral por nível, exige Militar 6 + Influência 3 + Economia 6, upkeep 2.2. Teto da capital, acima do Forte.
+> Same three-panel layout, the same castle evolving across three stages:
+> 1. Left: a modest fortified manor house with a single squat tower and a small keep.
+> 2. Center: a proper castle with two towers, a curtain wall, a drawbridge over a moat.
+> 3. Right: a grand castle complex with soaring towers, multiple wards, banners flying, a magnificent gatehouse — the true seat of a kingdom.
+> [selo de estilo v2]
+
+**Arsenal Naval** (`arsenal_naval.jpg` / `arsenal_naval_n2.jpg` / `arsenal_naval_n3.jpg`) — custo 195, +1 Militar/+1 Economia por nível, exige Economia 7 + Militar 3, upkeep 1.6. Evolução militar do Porto, frota de guerra.
+> Same three-panel layout, the same shipyard evolving across three stages:
+> 1. Left: a small shipwright's yard with a single half-built rowboat and scattered timber.
+> 2. Center: a shipyard with a mid-size galley under construction, timber stacks, a simple crane.
+> 3. Right: a grand naval arsenal with multiple warships under construction or repair in dry docks, tall cranes, naval banners flying.
+> [selo de estilo v2]
+
+**Mercado** (`mercado.jpg` / `mercado_n2.jpg` / `mercado_n3.jpg`) — custo 150, +2 Economia/+1 Influência por nível, exige Economia 6 + População 6, upkeep 1. Praça de comércio, diferente da lojinha da Taverna.
+> Same three-panel layout, the same marketplace evolving across three stages:
+> 1. Left: a single humble market stall with a few baskets of goods.
+> 2. Center: a small row of market stalls in a square, a handful of merchants and buyers haggling.
+> 3. Right: a grand bustling market square packed with stalls and awnings, crowds of merchants and traders, exotic goods on display.
+> [selo de estilo v2]
+
+**Catedral** (`catedral.jpg` / `catedral_n2.jpg` / `catedral_n3.jpg`) — custo 180, +1 Influência/+2 Moral por nível, exige Influência 4 + Economia 5 (o requisito não pode usar Moral — `reqAttr` só entende os 4 atributos do reino, não medidores), upkeep 1.5. Teto do Templo.
+> Same three-panel layout, the same religious building evolving across three stages (this one can reuse the Templo's first two stages if you'd rather not regenerate them — it's meant as an optional fourth stage above Templo's own nível 3):
+> 1. Left: (skip — reuse Templo estágio 1, a small wooden shrine).
+> 2. Center: (skip — reuse Templo estágio 2/3, a stone chapel or the cathedral already made above).
+> 3. Right: an immense cathedral with soaring twin spires, flying buttresses, stained glass windows glowing, a vast crowd filling the plaza before it.
+> [selo de estilo v2]
+
+### Depois de gerar
+
+Mesmo fluxo de sempre: manda os arquivos (sheet inteira ou já recortada, como preferir) que eu recorto, salvo em `img/assets/` com o nome certo de cada estágio (`<id>.jpg` / `<id>_n2.jpg` / `<id>_n3.jpg`) e confirmo no harness que o app escolhe a imagem certa pra cada nível. Não precisa gerar tudo de uma vez — dá pra ir propriedade por propriedade, e até só o estágio 1 de uma propriedade nova (Muralhas, Castelo etc.) já é suficiente pra ela aparecer decente assim que a mecânica dela for definida e ela entrar em `ATIVOS`.
